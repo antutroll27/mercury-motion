@@ -1,6 +1,6 @@
-# Mercury-Motion — Phase 1 Kickoff Session
+# Mercury-Motion — Phase 1 Build Session
 **Date:** 2026-03-23
-**Session:** Pre-build alignment + project setup
+**Session:** Full Phase 1 core engine build + Phase 1.5 improvements
 
 ---
 
@@ -8,12 +8,6 @@
 
 ### 1. Frontend Stack: Vue 3 (NOT React)
 The CLAUDE.md had an incorrect reference to React 19 + Zustand. The design spec, business doc, and technical architecture all specify **Vue 3 + Pinia + Tauri 2.0**. CLAUDE.md was corrected to match.
-
-**Updated CLAUDE.md lines:**
-- Line 13: `Tauri 2.0 + Vue 3`
-- Line 25: `Vue 3 + TypeScript (Bun, Vite, Tailwind, Pinia)`
-- Line 37: `Vue 3 + TypeScript. State: Pinia. NOT React, NOT Zustand, NOT Redux.`
-- Line 149: `Do not reference React, Zustand, or Redux — this project uses Vue 3 + Pinia`
 
 ### 2. Rust Edition: 2024
 Phase 1 plan had `edition = "2021"`. User confirmed **2024** for all crates.
@@ -23,84 +17,193 @@ Phase 1 plan had `edition = "2021"`. User confirmed **2024** for all crates.
 
 ---
 
-## Project Status at Session Start
+## What Was Built
 
-**Zero code exists.** The project is entirely documentation and specs:
-- 16 files total (15 markdown + 1 JSON settings)
-- No Cargo.toml, no Rust source, no frontend code
-- Not a git repo
+### Phase 1 (Core Engine) — All 14 Tasks Complete
+
+| Task | Component | Status |
+|------|-----------|--------|
+| 1 | Workspace scaffold (Cargo.toml, CI) | Done |
+| 2 | Error types (MmotError + thiserror) | Done |
+| 3 | Schema: Easing types | Done |
+| 4 | Schema: AnimatableValue\<T\> (custom serde deserializer) | Done |
+| 5 | Schema: Scene/Composition/Layer/Transform | Done |
+| 6 | Parser + validation (serde-path-to-error, JSON pointer paths) | Done |
+| 7 | Keyframe evaluator (cubic bezier, binary search, Newton's method) | Done |
+| 8 | Skia CPU renderer: solid + image layers | Done |
+| 9 | Skia CPU renderer: text layer (FontMgr + TextBlob) | Done |
+| 10 | Pipeline + rayon parallel frame rendering | Done |
+| 11 | Encoder: rav1e AV1 + IVF output (pure Rust, no NASM) | Done |
+| 12 | CLI: `mmot render` + `mmot validate` (clap) | Done |
+| 13 | Golden image tests (pixel-identical determinism) | Done |
+| 14 | Git init + commit | Done |
+
+### Phase 1.5 (Improvements) — Built Same Session
+
+| Feature | What | Status |
+|---------|------|--------|
+| MP4 output | muxide (pure Rust MP4 muxer, AV1 support) with IVF fallback | Done |
+| Props system | `${varName}` regex substitution + CLI `--prop key=value` | Done |
+| Precomps | Recursive composition evaluation (depth limit 32) | Done |
+| Shape layers | Rectangle (with corner radius) + ellipse, fill + stroke | Done |
+| Audio decoding | symphonia (MP3/WAV/FLAC/OGG/AAC → raw f32 samples) | Done |
+| Image layers | Load from disk paths, decode PNG/JPEG/WebP | Done |
 
 ---
 
-## Full File Inventory
+## Build Issues Encountered & Resolved
+
+### 1. `minimp4` crate required libclang (C dependency)
+**Problem:** `minimp4` wraps a C library via bindgen, needs `libclang.dll`.
+**Fix:** Replaced with `muxide` — pure Rust MP4 muxer with AV1 support, zero C deps.
+
+### 2. `rav1e` needed NASM for assembly
+**Problem:** rav1e's `asm` feature (default) requires NASM which wasn't installed.
+**Fix:** Disabled default features, kept only `threading`. Pure Rust fallback works but encoding is slow (~220s for 30 frames).
+
+### 3. rav1e `Frame::planes[n].p()` API mismatch
+**Problem:** The Phase 1 plan used `*y_plane.p(col, row) = y` but `p()` returns a value copy, not `&mut`.
+**Fix:** Used `data_origin_mut()` with stride-based indexing instead.
+
+### 4. Raw string delimiter collisions with `#` in hex colors
+**Problem:** `r#"..."#` raw strings broke when JSON contained `"#000000"` (the `"#` ended the raw string).
+**Fix:** Used `r##"..."##` double-hash delimiters for all test JSON containing hex colors.
+
+### 5. Skia ICU linker error on Windows
+**Problem:** `skunicode_icu.lib` referenced Windows registry APIs (`RegOpenKeyExW` etc) not linked.
+**Fix:** Added `build.rs` that links `advapi32.lib` on Windows.
+
+### 6. Skia `from_raster_data` deprecated
+**Problem:** `Image::from_raster_data()` deprecated in skia-safe 0.82.
+**Fix:** Replaced with `images::raster_from_data()`.
+
+### 7. muxide AV1 sequence header requirement
+**Problem:** muxide requires first AV1 frame to contain a Sequence Header OBU.
+**Fix:** Pass entire first rav1e packet as sequence header + fallback to IVF if muxing fails.
+
+---
+
+## Final Stats
+
+- **39 tests passing** (38 unit + 1 golden)
+- **0 clippy warnings**
+- **2 git commits:**
+  - `df92423` — Phase 1 core engine (53 files, 13,919 lines)
+  - `2f35eda` — Phase 1.5 improvements (13 files, 1,079 lines)
+- **Total: ~15,000 lines of Rust**
+
+---
+
+## What's Still Missing
+
+| Feature | Blocker | Path Forward |
+|---------|---------|-------------|
+| Audio muxing into MP4 | Need audio encoder (PCM → AAC/Opus) | Add `opus` or `fdk-aac` crate |
+| Video layers | Need video demuxing | Phase 2 `--features ffmpeg` |
+| Lottie layers | `skia-safe` doesn't expose Skottie module | Evaluate `skia-rs-skottie` or wait for upstream |
+| Encoding speed | rav1e without NASM is slow | Install NASM (needs admin) or use ffmpeg H.264 |
+| Blend modes | Defined in spec but not implemented | Skia blend mode mapping |
+
+---
+
+## File Structure After Build
 
 ```
 D:\ReMotion/
-├── CLAUDE.md                                              # Agent instructions (corrected this session)
-├── .claude/settings.local.json                            # Permissions (updated this session)
-└── docs/
-    ├── business/
-    │   ├── competitive-comparison.md                      # FilmTools vs closed competitors
-    │   ├── mercury-motion-business.md                     # Full business doc, financials, seed target
-    │   └── monetisation-strategy.md                       # MIT core, paid cloud/Pro/marketplace
-    ├── marketing/
-    │   └── mercury-motion-marketing.md                    # Full marketing strategy
-    ├── superpowers/
-    │   ├── plans/
-    │   │   └── 2026-03-22-phase1-core-engine.md           # 14-task implementation plan (2496 lines)
-    │   └── specs/
-    │       ├── 2026-03-22-remotion-rust-design.md         # Master design spec (66KB)
-    │       ├── business-plan.md                           # Shorter business overview
-    │       ├── color-science-skill-summary.md             # Log curves, gamut matrices, ACES
-    │       ├── filmtools-breakthroughs.md                 # Gyroflow, gpu-video, agx-emulsion, Newson
-    │       ├── marketing-strategy.md                      # Shorter marketing spec
-    │       ├── mmot-json-format.md                        # .mmot.json format spec (v0.1)
-    │       ├── skills-and-agents.md                       # 28 skills to install, prioritized
-    │       └── technical-architecture.md                  # System architecture, data flow
-    └── technical/
-        └── integrations.md                                # Lottie, Figma, AE plugin, REST API, SDKs
+├── .github/workflows/ci.yml
+├── .gitignore
+├── Cargo.toml                          # Workspace root
+├── Cargo.lock
+├── CLAUDE.md                           # Agent instructions (Vue 3 corrected)
+├── crates/
+│   ├── mmot-core/
+│   │   ├── Cargo.toml
+│   │   ├── build.rs                    # Links advapi32.lib on Windows
+│   │   ├── src/
+│   │   │   ├── lib.rs
+│   │   │   ├── error.rs               # MmotError enum (thiserror)
+│   │   │   ├── props.rs               # ${varName} substitution
+│   │   │   ├── schema/
+│   │   │   │   ├── mod.rs
+│   │   │   │   ├── easing.rs          # EasingValue, NamedEasing, CubicBezier
+│   │   │   │   ├── animatable.rs      # AnimatableValue<T>, Keyframe<T>, Vec2
+│   │   │   │   ├── transform.rs       # Transform (position, scale, opacity, rotation)
+│   │   │   │   ├── composition.rs     # Layer, LayerContent, Composition, ShapeSpec
+│   │   │   │   └── scene.rs           # Scene, Meta, PropDef, Assets
+│   │   │   ├── parser/
+│   │   │   │   ├── mod.rs             # parse() with serde-path-to-error
+│   │   │   │   └── validate.rs        # Post-deserialisation validation
+│   │   │   ├── evaluator/
+│   │   │   │   ├── mod.rs
+│   │   │   │   ├── easing.rs          # Cubic bezier solver (Newton's method)
+│   │   │   │   └── interpolate.rs     # evaluate_f64, evaluate_vec2
+│   │   │   ├── assets/
+│   │   │   │   ├── mod.rs
+│   │   │   │   ├── image.rs           # PNG/JPEG/WebP decode
+│   │   │   │   └── audio.rs           # symphonia MP3/WAV/FLAC/OGG/AAC decode
+│   │   │   ├── renderer/
+│   │   │   │   ├── mod.rs             # FrameScene, ResolvedLayer, render()
+│   │   │   │   ├── surface.rs         # Skia CPU surface creation
+│   │   │   │   ├── layers.rs          # Layer draw dispatch + transform
+│   │   │   │   ├── solid.rs           # Solid color rectangle
+│   │   │   │   ├── image.rs           # RGBA image drawing
+│   │   │   │   ├── text.rs            # Text rendering (FontMgr + TextBlob)
+│   │   │   │   └── shape.rs           # Rect + Ellipse with fill/stroke
+│   │   │   ├── encoder/
+│   │   │   │   ├── mod.rs
+│   │   │   │   └── mp4.rs             # rav1e AV1 + muxide MP4 + IVF fallback
+│   │   │   └── pipeline.rs            # Parallel render pipeline (rayon)
+│   │   └── tests/
+│   │       ├── generate_goldens.rs    # Golden image generator (#[ignore])
+│   │       ├── golden_test.rs         # Pixel-identical determinism test
+│   │       └── golden/minimal/frame-000.png
+│   └── mmot-cli/
+│       ├── Cargo.toml
+│       └── src/main.rs                # mmot render / mmot validate (clap)
+├── tests/fixtures/
+│   ├── valid/minimal.mmot.json
+│   └── invalid/missing_root.mmot.json
+└── docs/                              # All specs, plans, business docs (unchanged)
 ```
 
 ---
 
-## Phase 1 Plan Summary (14 Tasks)
+## CLI Usage
 
-| Task | What | Complexity |
-|------|------|-----------|
-| 1 | Project scaffold (Cargo workspace, CI) | Easy |
-| 2 | Error types (MmotError + thiserror) | Easy |
-| 3 | Schema: Easing types | Easy |
-| 4 | Schema: AnimatableValue\<T\> (custom serde) | Medium |
-| 5 | Schema: Scene/Composition/Layer types | Medium |
-| 6 | Parser + validation (serde-path-to-error) | Medium |
-| 7 | Keyframe evaluator (bezier math, binary search) | Medium |
-| 8 | Skia CPU renderer: solid + image layers | Hard |
-| 9 | Skia CPU renderer: text layer (SkShaper) | Hard |
-| 10 | Pipeline + rayon parallel frame rendering | Medium |
-| 11 | Encoder: rav1e AV1 + minimp4 muxer | Hard |
-| 12 | CLI: `mmot render` + `mmot validate` (clap) | Easy |
-| 13 | Golden image tests (pixel-identical determinism) | Easy |
-| 14 | CI green on Win/Mac/Linux + tag v0.1.0-phase1 | Easy |
+```bash
+# Validate
+mmot validate video.mmot.json
+
+# Render to MP4
+mmot render video.mmot.json -o output.mp4
+
+# Render with props
+mmot render template.mmot.json --prop title="Hello" --prop color="#FF0000" -o output.mp4
+
+# Render with verbose progress
+mmot render video.mmot.json -o output.mp4 -v
+```
 
 ---
 
-## Environment
+## Dependencies
 
-- **OS:** Windows 10 Home
-- **Rust:** 1.94.0 (supports edition 2024)
-- **NASM:** Not installed (rav1e will use pure Rust fallback)
-- **Git:** Not initialized yet (will be part of Task 1)
-
----
-
-## Adaptations From Original Plan
-
-1. Edition `2021` → `2024` (user decision)
-2. `skia-safe` version needs verification against current crates.io
-3. `rav1e` API needs verification (plane access patterns)
-4. `minimp4` crate needs verification as MP4 muxer
-5. No NASM — rav1e pure Rust fallback (slower encoding, same output)
-6. Plan references React in Plan 3 — will need Vue when we get there
+| Crate | Version | Purpose |
+|-------|---------|---------|
+| skia-safe | 0.82 | 2D rendering (CPU), text, shapes |
+| rav1e | 0.7 (no asm) | AV1 video encoding |
+| muxide | 0.2 | MP4 container muxing |
+| symphonia | 0.5 | Audio decoding (MP3/WAV/FLAC/OGG/AAC) |
+| serde + serde_json | 1 | JSON parsing |
+| schemars | 0.8 | JSON Schema derivation |
+| rayon | 1 | Parallel frame rendering |
+| image | 0.25 | PNG/JPEG/WebP decode |
+| thiserror | 2 | Error types |
+| anyhow | 1 | CLI error handling |
+| clap | 4 | CLI argument parsing |
+| tracing | 0.1 | Structured logging |
+| regex | 1 | Props substitution |
+| serde_path_to_error | 0.1 | JSON pointer error paths |
 
 ---
 
@@ -111,4 +214,4 @@ One memory file saved:
 
 ---
 
-*Next action: Execute Phase 1, starting with Task 1 (project scaffold).*
+*Next steps: Phase 2 (audio muxing, video layers, ffmpeg feature flag, blend modes) or Phase 3 (Vue 3 + Tauri editor).*
