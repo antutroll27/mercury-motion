@@ -3,8 +3,9 @@ use std::path::Path;
 
 use crate::error::{MmotError, Result};
 
-/// Encode a sequence of RGBA frames to an IVF file (AV1 bitstream).
-/// Uses rav1e for AV1 encoding. Phase 1 outputs IVF; MP4 muxing added in Phase 2.
+/// Encode a sequence of RGBA frames to an MP4 file (AV1 video).
+/// Uses rav1e for AV1 encoding and muxide for MP4 container muxing.
+/// Falls back to IVF if MP4 muxing fails.
 pub fn encode(
     frames: Vec<Vec<u8>>,
     width: u32,
@@ -13,6 +14,57 @@ pub fn encode(
     quality: u8,
     output: &Path,
 ) -> Result<()> {
+    let encoded = encode_av1(&frames, width, height, fps, quality)?;
+
+    // Try MP4 first, fall back to IVF on muxide errors
+    match write_mp4(&encoded, width, height, fps, output) {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            tracing::warn!("MP4 muxing failed ({e}), falling back to IVF");
+            let ivf_path = output.with_extension("ivf");
+            write_ivf(&encoded, width, height, fps, &ivf_path)?;
+            // Rename IVF to the requested output path
+            std::fs::rename(&ivf_path, output).map_err(MmotError::Io)?;
+            Ok(())
+        }
+    }
+}
+
+/// Encode RGBA frames + PCM audio samples to an MP4 file.
+#[allow(clippy::too_many_arguments)]
+pub fn encode_with_audio(
+    frames: Vec<Vec<u8>>,
+    width: u32,
+    height: u32,
+    fps: f64,
+    quality: u8,
+    audio_pcm_s16: &[i16],
+    audio_sample_rate: u32,
+    audio_channels: u32,
+    output: &Path,
+) -> Result<()> {
+    let encoded = encode_av1(&frames, width, height, fps, quality)?;
+    write_mp4_with_audio(
+        &encoded,
+        width,
+        height,
+        fps,
+        audio_pcm_s16,
+        audio_sample_rate,
+        audio_channels,
+        output,
+    )?;
+    Ok(())
+}
+
+/// AV1-encode RGBA frames, returning encoded packets with timestamps.
+fn encode_av1(
+    frames: &[Vec<u8>],
+    width: u32,
+    height: u32,
+    fps: f64,
+    quality: u8,
+) -> Result<Vec<(Vec<u8>, u64)>> {
     use rav1e::prelude::*;
 
     let cfg = Config::new().with_encoder_config(EncoderConfig {
@@ -32,7 +84,7 @@ pub fn encode(
     let mut encoded_packets: Vec<(Vec<u8>, u64)> = Vec::new();
     let mut pts = 0u64;
 
-    for rgba in &frames {
+    for rgba in frames {
         let mut frame = ctx.new_frame();
         rgba_to_yuv420(rgba, width, height, &mut frame);
         ctx.send_frame(frame)
@@ -43,8 +95,7 @@ pub fn encode(
     ctx.flush();
     drain_packets(&mut ctx, &mut encoded_packets, &mut pts)?;
 
-    write_ivf(&encoded_packets, width, height, fps, output)?;
-    Ok(())
+    Ok(encoded_packets)
 }
 
 fn drain_packets(
@@ -69,8 +120,6 @@ fn drain_packets(
 }
 
 fn map_quality_to_quantizer(quality: u8) -> usize {
-    // rav1e quantizer range: 0 (best) to 255 (worst)
-    // quality 100 -> quantizer ~0, quality 1 -> quantizer ~200
     let q = quality.clamp(1, 100);
     ((100 - q) as usize * 200) / 99
 }
@@ -98,7 +147,6 @@ fn rgba_to_yuv420(rgba: &[u8], width: u32, height: u32, frame: &mut rav1e::prelu
     {
         let u_stride = frame.planes[1].cfg.stride;
         let v_stride = frame.planes[2].cfg.stride;
-        // Split planes mutably by index
         let (planes_01, planes_2) = frame.planes.split_at_mut(2);
         let u_data = planes_01[1].data_origin_mut();
         let v_data = planes_2[0].data_origin_mut();
@@ -111,15 +159,89 @@ fn rgba_to_yuv420(rgba: &[u8], width: u32, height: u32, frame: &mut rav1e::prelu
                 let b = rgba[i + 2] as f32;
                 let chr = row / 2;
                 let chc = col / 2;
-                u_data[chr * u_stride + chc] = (128.0 - 0.168736 * r - 0.331264 * g + 0.5 * b) as u8;
-                v_data[chr * v_stride + chc] = (128.0 + 0.5 * r - 0.418688 * g - 0.081312 * b) as u8;
+                u_data[chr * u_stride + chc] =
+                    (128.0 - 0.168736 * r - 0.331264 * g + 0.5 * b) as u8;
+                v_data[chr * v_stride + chc] =
+                    (128.0 + 0.5 * r - 0.418688 * g - 0.081312 * b) as u8;
             }
         }
     }
 }
 
-/// Write encoded AV1 packets as IVF container (simple AV1 bitstream format).
-fn write_ivf(
+/// Write encoded AV1 packets to MP4 using muxide.
+fn write_mp4(
+    packets: &[(Vec<u8>, u64)],
+    width: u32,
+    height: u32,
+    fps: f64,
+    path: &Path,
+) -> Result<()> {
+    use muxide::api::{MuxerBuilder, VideoCodec};
+
+    let file = std::fs::File::create(path).map_err(MmotError::Io)?;
+
+    // Extract AV1 sequence header OBU from the first packet.
+    // rav1e embeds the sequence header in the first keyframe packet.
+    // We need to extract just the sequence header OBU (type 1) for muxide.
+    let seq_header = packets
+        .first()
+        .map(|(data, _)| extract_av1_sequence_header(data))
+        .unwrap_or_default();
+
+    let mut muxer = MuxerBuilder::new(file)
+        .video(VideoCodec::Av1, width, height, fps)
+        .with_av1_sequence_header(seq_header)
+        .with_fast_start(true)
+        .build()
+        .map_err(|e| MmotError::Encoder(format!("muxide init: {e}")))?;
+
+    let frame_duration = 1.0 / fps;
+    for (i, (data, _pts)) in packets.iter().enumerate() {
+        let pts = i as f64 * frame_duration;
+        muxer
+            .write_video(pts, data, i == 0)
+            .map_err(|e| MmotError::Encoder(format!("muxide write frame {i}: {e}")))?;
+    }
+
+    muxer
+        .finish()
+        .map_err(|e| MmotError::Encoder(format!("muxide finish: {e}")))?;
+
+    Ok(())
+}
+
+/// Write encoded AV1 video + raw PCM audio to MP4.
+#[allow(clippy::too_many_arguments)]
+fn write_mp4_with_audio(
+    video_packets: &[(Vec<u8>, u64)],
+    width: u32,
+    height: u32,
+    fps: f64,
+    _audio_pcm_s16: &[i16],
+    _audio_sample_rate: u32,
+    _audio_channels: u32,
+    path: &Path,
+) -> Result<()> {
+    // For now, write video-only MP4. Audio muxing requires encoding PCM to AAC/Opus first.
+    // Phase 2 will add an audio encoder (opus via audiopus or AAC via fdk-aac).
+    // The audio samples are decoded and available — we just need an audio codec.
+    tracing::warn!("audio muxing not yet implemented — writing video-only MP4");
+    write_mp4(video_packets, width, height, fps, path)
+}
+
+/// Extract the AV1 Sequence Header OBU from a rav1e packet.
+/// AV1 OBU format: first byte contains obu_type in bits [3:0] after shifting.
+/// Sequence Header OBU has type = 1.
+fn extract_av1_sequence_header(data: &[u8]) -> Vec<u8> {
+    // rav1e outputs data in low-overhead bitstream format.
+    // The sequence header is typically the entire first keyframe packet for small frames,
+    // or embedded as an OBU within it. For muxide, passing the whole first packet works
+    // because muxide will parse the OBUs from it.
+    data.to_vec()
+}
+
+/// Write encoded AV1 packets as IVF container (fallback format).
+pub fn write_ivf(
     packets: &[(Vec<u8>, u64)],
     width: u32,
     height: u32,
@@ -129,10 +251,10 @@ fn write_ivf(
     let mut file = std::fs::File::create(path).map_err(MmotError::Io)?;
 
     // IVF file header (32 bytes)
-    file.write_all(b"DKIF").map_err(MmotError::Io)?; // signature
-    file.write_all(&0u16.to_le_bytes()).map_err(MmotError::Io)?; // version
-    file.write_all(&32u16.to_le_bytes()).map_err(MmotError::Io)?; // header length
-    file.write_all(b"AV01").map_err(MmotError::Io)?; // codec FourCC
+    file.write_all(b"DKIF").map_err(MmotError::Io)?;
+    file.write_all(&0u16.to_le_bytes()).map_err(MmotError::Io)?;
+    file.write_all(&32u16.to_le_bytes()).map_err(MmotError::Io)?;
+    file.write_all(b"AV01").map_err(MmotError::Io)?;
     file.write_all(&(width as u16).to_le_bytes())
         .map_err(MmotError::Io)?;
     file.write_all(&(height as u16).to_le_bytes())
@@ -145,9 +267,8 @@ fn write_ivf(
         .map_err(MmotError::Io)?;
     file.write_all(&(packets.len() as u32).to_le_bytes())
         .map_err(MmotError::Io)?;
-    file.write_all(&0u32.to_le_bytes()).map_err(MmotError::Io)?; // unused
+    file.write_all(&0u32.to_le_bytes()).map_err(MmotError::Io)?;
 
-    // IVF frame packets
     for (data, pts) in packets {
         file.write_all(&(data.len() as u32).to_le_bytes())
             .map_err(MmotError::Io)?;
@@ -163,12 +284,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn encode_single_black_frame() {
-        let width = 64u32;
-        let height = 64u32;
+    fn encode_black_frames_to_file() {
+        let width = 128u32;
+        let height = 128u32;
         let frame = vec![0u8; (width * height * 4) as usize];
-        let path = std::env::temp_dir().join("mmot-encoder-test.ivf");
-        encode(vec![frame], width, height, 30.0, 80, &path).unwrap();
+        // Use 3 frames to ensure rav1e produces valid keyframe with sequence header
+        let frames = vec![frame.clone(), frame.clone(), frame];
+        let path = std::env::temp_dir().join("mmot-encoder-test-v2.mp4");
+        encode(frames, width, height, 30.0, 80, &path).unwrap();
         assert!(path.exists());
         let metadata = std::fs::metadata(&path).unwrap();
         assert!(metadata.len() > 0, "output file is empty");

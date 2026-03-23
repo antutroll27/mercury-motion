@@ -1,5 +1,6 @@
 mod image;
 pub mod layers;
+pub mod shape;
 mod solid;
 mod surface;
 pub mod text;
@@ -48,6 +49,9 @@ pub enum ResolvedContent {
         font_weight: u32,
         color: String,
         align: TextAlign,
+    },
+    Shape {
+        shape: shape::ResolvedShape,
     },
 }
 
@@ -119,11 +123,10 @@ mod tests {
         let frame = make_solid_frame("#ff0000", 4, 4);
         let rgba = render(&frame).unwrap();
         assert_eq!(rgba.len(), 4 * 4 * 4);
-        // First pixel should be red
-        assert_eq!(rgba[0], 255); // R
-        assert_eq!(rgba[1], 0); // G
-        assert_eq!(rgba[2], 0); // B
-        assert_eq!(rgba[3], 255); // A
+        assert_eq!(rgba[0], 255);
+        assert_eq!(rgba[1], 0);
+        assert_eq!(rgba[2], 0);
+        assert_eq!(rgba[3], 255);
     }
 
     #[test]
@@ -131,5 +134,38 @@ mod tests {
         let frame = make_solid_frame("#ffffff", 16, 9);
         let rgba = render(&frame).unwrap();
         assert_eq!(rgba.len(), 16 * 9 * 4);
+    }
+
+    #[test]
+    fn shape_rect_renders() {
+        let frame = FrameScene {
+            width: 100,
+            height: 100,
+            background: "#000000".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 50.0, y: 50.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Shape {
+                    shape: shape::ResolvedShape::Rect {
+                        width: 80.0,
+                        height: 40.0,
+                        corner_radius: 5.0,
+                        fill: Some("#00ff00".into()),
+                        stroke_color: None,
+                        stroke_width: 0.0,
+                    },
+                },
+            }],
+        };
+        let rgba = render(&frame).unwrap();
+        assert_eq!(rgba.len(), 100 * 100 * 4);
+        // Should have some green pixels
+        let has_green = rgba.chunks(4).any(|px| px[1] > 200 && px[0] < 50);
+        assert!(has_green, "expected green pixels from shape");
     }
 }

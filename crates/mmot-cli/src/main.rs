@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use anyhow::Context;
@@ -19,17 +20,27 @@ enum Commands {
     /// Render a .mmot.json file to video
     Render {
         file: PathBuf,
-        #[arg(short, long, default_value = "output.ivf")]
+        #[arg(short, long, default_value = "output.mp4")]
         output: PathBuf,
         #[arg(short, long, default_value_t = 80)]
         quality: u8,
         #[arg(long)]
         concurrency: Option<usize>,
+        /// Set a prop value: --prop key=value (repeatable)
+        #[arg(long = "prop", value_parser = parse_prop)]
+        props: Vec<(String, String)>,
         #[arg(short, long)]
         verbose: bool,
     },
     /// Validate a .mmot.json file without rendering
     Validate { file: PathBuf },
+}
+
+fn parse_prop(s: &str) -> std::result::Result<(String, String), String> {
+    let pos = s
+        .find('=')
+        .ok_or_else(|| format!("invalid prop format: '{s}' (expected key=value)"))?;
+    Ok((s[..pos].to_string(), s[pos + 1..].to_string()))
 }
 
 fn main() {
@@ -52,8 +63,8 @@ fn main() {
 fn run(cli: Cli) -> anyhow::Result<()> {
     match cli.command {
         Commands::Validate { file } => {
-            let json =
-                std::fs::read_to_string(&file).with_context(|| format!("cannot read {}", file.display()))?;
+            let json = std::fs::read_to_string(&file)
+                .with_context(|| format!("cannot read {}", file.display()))?;
             mmot_core::parser::parse(&json)?;
             println!("valid: {}", file.display());
             Ok(())
@@ -63,10 +74,13 @@ fn run(cli: Cli) -> anyhow::Result<()> {
             output,
             quality,
             concurrency,
+            props,
             verbose,
         } => {
-            let json =
-                std::fs::read_to_string(&file).with_context(|| format!("cannot read {}", file.display()))?;
+            let json = std::fs::read_to_string(&file)
+                .with_context(|| format!("cannot read {}", file.display()))?;
+
+            let cli_props: HashMap<String, String> = props.into_iter().collect();
 
             let progress: Option<mmot_core::pipeline::ProgressFn> = if verbose {
                 Some(std::sync::Arc::new(|current, total| {
@@ -86,7 +100,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 include_audio: false,
             };
 
-            mmot_core::pipeline::render_scene(&json, opts, progress)?;
+            mmot_core::pipeline::render_scene_with_props(&json, &cli_props, opts, progress)?;
             if verbose {
                 eprintln!();
             }

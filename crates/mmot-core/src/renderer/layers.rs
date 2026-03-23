@@ -2,7 +2,7 @@ use skia_safe::Canvas;
 
 use crate::renderer::{ResolvedContent, ResolvedLayer};
 
-use super::{image as img_renderer, solid, text};
+use super::{image as img_renderer, shape, solid, text};
 
 /// Draw a single resolved layer onto the canvas.
 pub fn draw_layer(canvas: &Canvas, layer: &ResolvedLayer, width: u32, height: u32) {
@@ -35,6 +35,9 @@ pub fn draw_layer(canvas: &Canvas, layer: &ResolvedLayer, width: u32, height: u3
                 color,
                 align,
             );
+        }
+        ResolvedContent::Shape { shape: s } => {
+            shape::draw(canvas, s, &paint);
         }
     }
     canvas.restore();
