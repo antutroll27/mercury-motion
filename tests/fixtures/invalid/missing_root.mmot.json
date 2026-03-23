@@ -1,0 +1,13 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "Bad",
+    "width": 640, "height": 360,
+    "fps": 30, "duration": 30,
+    "background": "#000000",
+    "root": "nonexistent_composition"
+  },
+  "compositions": {
+    "main": { "layers": [] }
+  }
+}

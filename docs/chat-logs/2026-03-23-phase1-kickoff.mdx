@@ -1,0 +1,114 @@
+# Mercury-Motion — Phase 1 Kickoff Session
+**Date:** 2026-03-23
+**Session:** Pre-build alignment + project setup
+
+---
+
+## Key Decisions Made This Session
+
+### 1. Frontend Stack: Vue 3 (NOT React)
+The CLAUDE.md had an incorrect reference to React 19 + Zustand. The design spec, business doc, and technical architecture all specify **Vue 3 + Pinia + Tauri 2.0**. CLAUDE.md was corrected to match.
+
+**Updated CLAUDE.md lines:**
+- Line 13: `Tauri 2.0 + Vue 3`
+- Line 25: `Vue 3 + TypeScript (Bun, Vite, Tailwind, Pinia)`
+- Line 37: `Vue 3 + TypeScript. State: Pinia. NOT React, NOT Zustand, NOT Redux.`
+- Line 149: `Do not reference React, Zustand, or Redux — this project uses Vue 3 + Pinia`
+
+### 2. Rust Edition: 2024
+Phase 1 plan had `edition = "2021"`. User confirmed **2024** for all crates.
+
+### 3. Permissions Configured
+`.claude/settings.local.json` updated to auto-approve all Bash, Read, Write, Edit, Glob, Grep operations inside the project folder.
+
+---
+
+## Project Status at Session Start
+
+**Zero code exists.** The project is entirely documentation and specs:
+- 16 files total (15 markdown + 1 JSON settings)
+- No Cargo.toml, no Rust source, no frontend code
+- Not a git repo
+
+---
+
+## Full File Inventory
+
+```
+D:\ReMotion/
+├── CLAUDE.md                                              # Agent instructions (corrected this session)
+├── .claude/settings.local.json                            # Permissions (updated this session)
+└── docs/
+    ├── business/
+    │   ├── competitive-comparison.md                      # FilmTools vs closed competitors
+    │   ├── mercury-motion-business.md                     # Full business doc, financials, seed target
+    │   └── monetisation-strategy.md                       # MIT core, paid cloud/Pro/marketplace
+    ├── marketing/
+    │   └── mercury-motion-marketing.md                    # Full marketing strategy
+    ├── superpowers/
+    │   ├── plans/
+    │   │   └── 2026-03-22-phase1-core-engine.md           # 14-task implementation plan (2496 lines)
+    │   └── specs/
+    │       ├── 2026-03-22-remotion-rust-design.md         # Master design spec (66KB)
+    │       ├── business-plan.md                           # Shorter business overview
+    │       ├── color-science-skill-summary.md             # Log curves, gamut matrices, ACES
+    │       ├── filmtools-breakthroughs.md                 # Gyroflow, gpu-video, agx-emulsion, Newson
+    │       ├── marketing-strategy.md                      # Shorter marketing spec
+    │       ├── mmot-json-format.md                        # .mmot.json format spec (v0.1)
+    │       ├── skills-and-agents.md                       # 28 skills to install, prioritized
+    │       └── technical-architecture.md                  # System architecture, data flow
+    └── technical/
+        └── integrations.md                                # Lottie, Figma, AE plugin, REST API, SDKs
+```
+
+---
+
+## Phase 1 Plan Summary (14 Tasks)
+
+| Task | What | Complexity |
+|------|------|-----------|
+| 1 | Project scaffold (Cargo workspace, CI) | Easy |
+| 2 | Error types (MmotError + thiserror) | Easy |
+| 3 | Schema: Easing types | Easy |
+| 4 | Schema: AnimatableValue\<T\> (custom serde) | Medium |
+| 5 | Schema: Scene/Composition/Layer types | Medium |
+| 6 | Parser + validation (serde-path-to-error) | Medium |
+| 7 | Keyframe evaluator (bezier math, binary search) | Medium |
+| 8 | Skia CPU renderer: solid + image layers | Hard |
+| 9 | Skia CPU renderer: text layer (SkShaper) | Hard |
+| 10 | Pipeline + rayon parallel frame rendering | Medium |
+| 11 | Encoder: rav1e AV1 + minimp4 muxer | Hard |
+| 12 | CLI: `mmot render` + `mmot validate` (clap) | Easy |
+| 13 | Golden image tests (pixel-identical determinism) | Easy |
+| 14 | CI green on Win/Mac/Linux + tag v0.1.0-phase1 | Easy |
+
+---
+
+## Environment
+
+- **OS:** Windows 10 Home
+- **Rust:** 1.94.0 (supports edition 2024)
+- **NASM:** Not installed (rav1e will use pure Rust fallback)
+- **Git:** Not initialized yet (will be part of Task 1)
+
+---
+
+## Adaptations From Original Plan
+
+1. Edition `2021` → `2024` (user decision)
+2. `skia-safe` version needs verification against current crates.io
+3. `rav1e` API needs verification (plane access patterns)
+4. `minimp4` crate needs verification as MP4 muxer
+5. No NASM — rav1e pure Rust fallback (slower encoding, same output)
+6. Plan references React in Plan 3 — will need Vue when we get there
+
+---
+
+## Memory State
+
+One memory file saved:
+- `project_tech_stack.md` — Vue 3 + Pinia + Tauri 2.0 (NOT React)
+
+---
+
+*Next action: Execute Phase 1, starting with Task 1 (project scaffold).*

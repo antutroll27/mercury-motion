@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "Minimal",
+    "width": 640, "height": 360,
+    "fps": 30, "duration": 30,
+    "background": "#000000",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "bg",
+          "type": "solid",
+          "in": 0, "out": 30,
+          "color": "#1a1a2e",
+          "transform": { "position": [320.0, 180.0], "scale": [1.0, 1.0], "opacity": 1.0, "rotation": 0.0 }
+        }
+      ]
+    }
+  }
+}
