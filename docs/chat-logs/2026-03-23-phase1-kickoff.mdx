@@ -191,7 +191,7 @@ mmot render video.mmot.json -o output.mp4 -v
 | Crate | Version | Purpose |
 |-------|---------|---------|
 | skia-safe | 0.82 | 2D rendering (CPU), text, shapes |
-| rav1e | 0.7 (no asm) | AV1 video encoding |
+| rav1e | 0.7 (+ NASM asm) | AV1 video encoding |
 | muxide | 0.2 | MP4 container muxing |
 | symphonia | 0.5 | Audio decoding (MP3/WAV/FLAC/OGG/AAC) |
 | serde + serde_json | 1 | JSON parsing |
@@ -214,4 +214,57 @@ One memory file saved:
 
 ---
 
-*Next steps: Phase 2 (audio muxing, video layers, ffmpeg feature flag, blend modes) or Phase 3 (Vue 3 + Tauri editor).*
+## Benchmark Results (NASM Installed)
+
+| Build | 30 frames (640x360) | vs Remotion (~8 min) |
+|-------|--------------------|-----------------------|
+| Debug, no NASM | 220s | slower |
+| Debug, NASM | 67s | ~7x faster |
+| **Release, NASM** | **1.9s** | **~250x faster** |
+
+NASM installed via `choco install nasm`. rav1e `asm` feature re-enabled. Release build renders 30 frames, AV1-encodes, and muxes to MP4 in **1.9 seconds**.
+
+---
+
+## Phase 1 Audit — Remaining Gaps
+
+An audit was run comparing the code against the Phase 1 plan. Result: **~85% complete**. Core engine works, but these gaps remain:
+
+### 1. Missing Validators in `parser/validate.rs`
+These 6 validation rules from the spec are not implemented:
+- Duplicate layer IDs within a composition
+- `duration > 0` check
+- Keyframe frame values must be in ascending order
+- Font weight must be 100-900 in steps of 100
+- Circular composition detection at parse time (only depth guard exists at render time)
+- Version string validation (`"0.1"` or supported list)
+
+### 2. Missing Test Fixtures (4 files)
+- `tests/fixtures/valid/text_fade.mmot.json` — text layer with opacity animation
+- `tests/fixtures/valid/image_scale.mmot.json` — image layer with scale transform
+- `tests/fixtures/invalid/bad_easing.mmot.json` — invalid easing parameters
+- `tests/fixtures/invalid/prop_type_mismatch.mmot.json` — wrong prop type
+
+### 3. Missing CLI Integration Tests
+- `crates/mmot-cli/tests/cli_test.rs` — tests for exit codes (0 for valid, 2 for parse error)
+
+### 4. Schema Field Names (NOT a bug)
+The plan used `duration_frames`/`in_frame`/`out_frame` but the code uses `duration`/`in`/`out`. The code matches the `.mmot.json` format spec — the plan was outdated. No change needed.
+
+### Status
+User asked to fix all gaps. Work not yet started — pick up in next session.
+
+---
+
+## Git Log
+
+```
+de59d3d  perf: enable NASM assembly for rav1e encoder
+425ad36  docs: save Phase 1 build session log
+2f35eda  feat: MP4 output, props, precomps, shapes, audio decoding
+df92423  feat: Mercury-Motion Phase 1 — core Rust engine
+```
+
+---
+
+*Next session: Fix Phase 1 gaps (validators, fixtures, CLI tests), then Phase 2 or Vue editor.*
