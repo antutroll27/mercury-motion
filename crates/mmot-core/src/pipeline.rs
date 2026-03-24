@@ -259,15 +259,62 @@ fn evaluate_composition(
     };
 
     let mut resolved_layers = Vec::new();
-    for (layer, eff_in, eff_out) in &timed_layers {
+    for (i, (layer, eff_in, eff_out)) in timed_layers.iter().enumerate() {
         if frame < *eff_in || frame >= *eff_out {
             continue;
         }
 
         let position = evaluate_vec2(&layer.transform.position, frame);
         let scale = evaluate_vec2(&layer.transform.scale, frame);
-        let opacity = evaluate_f64(&layer.transform.opacity, frame);
+        let mut opacity = evaluate_f64(&layer.transform.opacity, frame);
         let rotation = evaluate_f64(&layer.transform.rotation, frame);
+
+        // Apply transition opacity for overlapping layers in sequence mode
+        if comp.sequence
+            && let Some(ref transition) = comp.transition
+        {
+            let transition_dur = match transition {
+                TransitionSpec::Crossfade { duration } => *duration,
+                TransitionSpec::Wipe { duration, .. } => *duration,
+                TransitionSpec::Slide { duration, .. } => *duration,
+            };
+
+            if transition_dur > 0 {
+                // Check overlap with next layer (this layer is the outgoing one)
+                if i + 1 < timed_layers.len() {
+                    let (_, next_eff_in, _) = timed_layers[i + 1];
+                    if frame >= next_eff_in && frame < *eff_out {
+                        let overlap_len = *eff_out - next_eff_in;
+                        if overlap_len > 0 {
+                            let progress =
+                                (frame - next_eff_in) as f64 / overlap_len as f64;
+                            let (out_mult, _) =
+                                crate::renderer::transition::transition_opacity(
+                                    transition, progress,
+                                );
+                            opacity *= out_mult;
+                        }
+                    }
+                }
+
+                // Check overlap with previous layer (this layer is the incoming one)
+                if i > 0 {
+                    let (_, _, prev_eff_out) = timed_layers[i - 1];
+                    if frame < prev_eff_out && frame >= *eff_in {
+                        let overlap_len = prev_eff_out - *eff_in;
+                        if overlap_len > 0 {
+                            let progress =
+                                (frame - *eff_in) as f64 / overlap_len as f64;
+                            let (_, in_mult) =
+                                crate::renderer::transition::transition_opacity(
+                                    transition, progress,
+                                );
+                            opacity *= in_mult;
+                        }
+                    }
+                }
+            }
+        }
 
         let transform = ResolvedTransform {
             position,
@@ -633,5 +680,30 @@ mod tests {
         // Frame 20: layer no longer visible (exclusive out)
         let fs20 = evaluate_scene(&scene, 20).unwrap();
         assert_eq!(fs20.layers.len(), 0);
+    }
+
+    #[test]
+    fn crossfade_modifies_opacity() {
+        let json = include_str!("../../../tests/fixtures/valid/sequence.mmot.json");
+        let scene = parse(json).unwrap();
+
+        // Frame 25 is in the overlap zone (red: 0-30, blue: 20-50, overlap: 20-30)
+        // Progress at frame 25: (25-20)/(30-20) = 0.5
+        let fs = evaluate_scene(&scene, 25).unwrap();
+        assert_eq!(fs.layers.len(), 2);
+
+        // First layer (red/outgoing) should have opacity ~0.5
+        let out_opacity = fs.layers[0].opacity;
+        assert!(
+            (out_opacity - 0.5).abs() < 0.1,
+            "outgoing opacity should be ~0.5, got {out_opacity}"
+        );
+
+        // Second layer (blue/incoming) should have opacity ~0.5
+        let in_opacity = fs.layers[1].opacity;
+        assert!(
+            (in_opacity - 0.5).abs() < 0.1,
+            "incoming opacity should be ~0.5, got {in_opacity}"
+        );
     }
 }

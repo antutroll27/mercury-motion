@@ -5,6 +5,7 @@ pub mod shape;
 mod solid;
 mod surface;
 pub mod text;
+pub mod transition;
 
 use crate::error::Result;
 use crate::schema::{TextAlign, Vec2};
