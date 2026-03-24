@@ -450,9 +450,20 @@ fn evaluate_composition(
                 // Audio doesn't produce visual output — handled separately
                 continue;
             }
-            LayerContent::Video { .. } => {
-                tracing::warn!("video layer '{}' not yet implemented — skipping", layer.id);
-                continue;
+            LayerContent::Video { src, trim_start, .. } => {
+                let scene_time = frame as f64 / scene.meta.fps;
+                let video_time = scene_time + *trim_start;
+                match crate::assets::video::decode_frame(Path::new(src), video_time) {
+                    Ok(decoded) => ResolvedContent::Image {
+                        data: decoded.rgba,
+                        width: decoded.width,
+                        height: decoded.height,
+                    },
+                    Err(e) => {
+                        tracing::warn!("skipping video layer '{}': {e}", layer.id);
+                        continue;
+                    }
+                }
             }
             LayerContent::Lottie { .. } => {
                 tracing::warn!(
@@ -740,5 +751,23 @@ mod tests {
             (in_opacity - 0.5).abs() < 0.1,
             "incoming opacity should be ~0.5, got {in_opacity}"
         );
+    }
+
+    #[test]
+    fn video_layer_without_ffmpeg_skips_gracefully() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": {"name":"Vid","width":64,"height":64,"fps":30,"duration":1,"background":"#000000","root":"main"},
+            "compositions": {"main": {"layers": [{
+                "id": "vid", "type": "video", "in": 0, "out": 1,
+                "src": "nonexistent.mp4",
+                "transform": {"position":[32,32],"scale":[1,1],"opacity":1.0,"rotation":0.0}
+            }]}}
+        }"##;
+        let scene = parse(json).expect("should parse video layer JSON");
+        let font_cache = HashMap::new();
+        let fs = evaluate_scene(&scene, 0, &font_cache).expect("evaluate should not fail");
+        // Without the ffmpeg feature (or with a missing file), the video layer is skipped
+        assert_eq!(fs.layers.len(), 0);
     }
 }

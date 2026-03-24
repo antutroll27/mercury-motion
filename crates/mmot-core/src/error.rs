@@ -48,6 +48,10 @@ pub enum MmotError {
     #[error("audio encode error: {0}")]
     AudioEncode(String),
 
+    /// Video decoding error.
+    #[error("video decode error: {0}")]
+    VideoDecode(String),
+
     /// IO error (file read/write).
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),

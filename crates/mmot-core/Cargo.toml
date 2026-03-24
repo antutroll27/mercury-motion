@@ -6,6 +6,7 @@ edition = "2024"
 [features]
 default = []
 audio-codec = ["opus"]
+ffmpeg = ["dep:ffmpeg-next", "dep:ffmpeg-sys-next"]
 
 [dependencies]
 serde = { workspace = true }
@@ -23,6 +24,8 @@ symphonia = { version = "0.5", features = ["mp3", "wav", "flac", "aac", "ogg", "
 regex = "1"
 gif = "0.13"
 opus = { version = "0.3", optional = true }
+ffmpeg-next = { version = "7", optional = true }
+ffmpeg-sys-next = { version = "7", optional = true, default-features = false }
 
 [dev-dependencies]
 pretty_assertions = "1"
