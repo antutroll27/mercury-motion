@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{AnimatableValue, Transform};
+use crate::schema::transition::TransitionSpec;
 
 /// A single layer in a composition.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -166,9 +167,17 @@ pub struct GradientStop {
 }
 
 /// A composition — an ordered list of layers (first = bottom of visual stack).
+///
+/// When `sequence` is `true`, layers play back-to-back instead of using their
+/// individual `in`/`out` points for global timing. An optional `transition`
+/// controls overlap between consecutive layers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Composition {
     pub layers: Vec<Layer>,
+    #[serde(default)]
+    pub sequence: bool,
+    #[serde(default)]
+    pub transition: Option<TransitionSpec>,
 }
 
 /// Map of composition ID to composition.

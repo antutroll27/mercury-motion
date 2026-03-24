@@ -12,7 +12,7 @@ use crate::renderer::shape::ResolvedShape;
 use crate::renderer::{
     render as render_frame, FrameScene, ResolvedContent, ResolvedLayer, ResolvedTransform,
 };
-use crate::schema::{LayerContent, Scene, ShapeSpec};
+use crate::schema::{Layer, LayerContent, Scene, ShapeSpec, TransitionSpec};
 
 /// Options for the render pipeline.
 pub struct RenderOptions {
@@ -201,6 +201,33 @@ pub fn evaluate_scene(scene: &Scene, frame: u64) -> Result<FrameScene> {
     })
 }
 
+/// Compute effective (start, end) frame pairs for layers in sequence mode.
+///
+/// Each layer plays immediately after the previous one finishes, with an
+/// optional overlap derived from the composition-level transition duration.
+fn compute_sequence_timing<'a>(
+    layers: &'a [Layer],
+    transition: Option<&TransitionSpec>,
+) -> Vec<(&'a Layer, u64, u64)> {
+    let overlap = match transition {
+        Some(TransitionSpec::Crossfade { duration }) => *duration,
+        Some(TransitionSpec::Wipe { duration, .. }) => *duration,
+        Some(TransitionSpec::Slide { duration, .. }) => *duration,
+        None => 0,
+    };
+
+    let mut result = Vec::new();
+    let mut cursor = 0u64;
+    for (i, layer) in layers.iter().enumerate() {
+        let duration = layer.out_point - layer.in_point;
+        let start = if i > 0 { cursor.saturating_sub(overlap) } else { cursor };
+        let end = start + duration;
+        result.push((layer, start, end));
+        cursor = end;
+    }
+    result
+}
+
 /// Recursively evaluate a composition, resolving precomp references.
 fn evaluate_composition(
     scene: &Scene,
@@ -223,9 +250,17 @@ fn evaluate_composition(
         }
     })?;
 
+    // Compute effective timing: sequence mode lays layers back-to-back,
+    // otherwise each layer uses its own in/out points.
+    let timed_layers: Vec<(&Layer, u64, u64)> = if comp.sequence {
+        compute_sequence_timing(&comp.layers, comp.transition.as_ref())
+    } else {
+        comp.layers.iter().map(|l| (l, l.in_point, l.out_point)).collect()
+    };
+
     let mut resolved_layers = Vec::new();
-    for layer in &comp.layers {
-        if frame < layer.in_point || frame >= layer.out_point {
+    for (layer, eff_in, eff_out) in &timed_layers {
+        if frame < *eff_in || frame >= *eff_out {
             continue;
         }
 
@@ -477,5 +512,126 @@ mod tests {
             frame_scene.layers[0].content,
             ResolvedContent::Solid { .. }
         ));
+    }
+
+    #[test]
+    fn sequence_layers_play_back_to_back() {
+        let json = include_str!("../../../tests/fixtures/valid/sequence.mmot.json");
+        let scene = parse(json).unwrap();
+
+        // With crossfade duration=10 and each layer duration=30:
+        //   Layer 0 (red):  frames 0..30
+        //   Layer 1 (blue): frames 20..50  (starts at 30-10=20)
+
+        // Frame 0: only red visible
+        let fs0 = evaluate_scene(&scene, 0).unwrap();
+        assert_eq!(fs0.layers.len(), 1);
+        assert!(matches!(
+            fs0.layers[0].content,
+            ResolvedContent::Solid { ref color } if color == "#ff0000"
+        ));
+
+        // Frame 25: both visible (overlap zone: red 0..30, blue 20..50)
+        let fs25 = evaluate_scene(&scene, 25).unwrap();
+        assert_eq!(
+            fs25.layers.len(),
+            2,
+            "during crossfade overlap, both layers should be active"
+        );
+
+        // Frame 40: only blue visible
+        let fs40 = evaluate_scene(&scene, 40).unwrap();
+        assert_eq!(fs40.layers.len(), 1);
+        assert!(matches!(
+            fs40.layers[0].content,
+            ResolvedContent::Solid { ref color } if color == "#0000ff"
+        ));
+    }
+
+    #[test]
+    fn sequence_without_transition_no_overlap() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": {"name":"SeqNoTrans","width":64,"height":64,"fps":30,"duration":60,"background":"#000000","root":"main"},
+            "compositions": {
+                "main": {
+                    "sequence": true,
+                    "layers": [
+                        {
+                            "id": "a",
+                            "type": "solid",
+                            "in": 0, "out": 20,
+                            "color": "#ff0000",
+                            "transform": {"position":[32,32],"scale":[1,1],"opacity":1.0,"rotation":0.0}
+                        },
+                        {
+                            "id": "b",
+                            "type": "solid",
+                            "in": 0, "out": 20,
+                            "color": "#00ff00",
+                            "transform": {"position":[32,32],"scale":[1,1],"opacity":1.0,"rotation":0.0}
+                        }
+                    ]
+                }
+            }
+        }"##;
+
+        let scene = parse(json).unwrap();
+
+        // Layer a: 0..20, Layer b: 20..40 (no overlap)
+
+        // Frame 10: only layer a
+        let fs10 = evaluate_scene(&scene, 10).unwrap();
+        assert_eq!(fs10.layers.len(), 1);
+        assert!(matches!(
+            fs10.layers[0].content,
+            ResolvedContent::Solid { ref color } if color == "#ff0000"
+        ));
+
+        // Frame 19: still only layer a (out_point is exclusive)
+        let fs19 = evaluate_scene(&scene, 19).unwrap();
+        assert_eq!(fs19.layers.len(), 1);
+
+        // Frame 20: only layer b (a ended at 20, b starts at 20)
+        let fs20 = evaluate_scene(&scene, 20).unwrap();
+        assert_eq!(fs20.layers.len(), 1);
+        assert!(matches!(
+            fs20.layers[0].content,
+            ResolvedContent::Solid { ref color } if color == "#00ff00"
+        ));
+    }
+
+    #[test]
+    fn non_sequence_composition_unchanged() {
+        // Ensure sequence=false (default) uses in/out points as-is
+        let json = r##"{
+            "version": "1.0",
+            "meta": {"name":"Normal","width":64,"height":64,"fps":30,"duration":30,"background":"#000000","root":"main"},
+            "compositions": {
+                "main": {
+                    "layers": [{
+                        "id": "bg",
+                        "type": "solid",
+                        "in": 5, "out": 20,
+                        "color": "#ff0000",
+                        "transform": {"position":[32,32],"scale":[1,1],"opacity":1.0,"rotation":0.0}
+                    }]
+                }
+            }
+        }"##;
+
+        let scene = parse(json).unwrap();
+
+        // Frame 0: layer not yet visible
+        let fs0 = evaluate_scene(&scene, 0).unwrap();
+        assert_eq!(fs0.layers.len(), 0);
+
+        // Frame 10: layer visible
+        let fs10 = evaluate_scene(&scene, 10).unwrap();
+        assert_eq!(fs10.layers.len(), 1);
+
+        // Frame 20: layer no longer visible (exclusive out)
+        let fs20 = evaluate_scene(&scene, 20).unwrap();
+        assert_eq!(fs20.layers.len(), 0);
     }
 }
