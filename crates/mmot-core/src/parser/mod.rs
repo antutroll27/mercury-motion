@@ -43,4 +43,35 @@ mod tests {
         let err = parse("{not valid json}").unwrap_err();
         assert!(matches!(err, crate::error::MmotError::Parse { .. }));
     }
+
+    #[test]
+    fn parse_valid_text_fade() {
+        let json = include_str!("../../../../tests/fixtures/valid/text_fade.mmot.json");
+        let scene = parse(json).unwrap();
+        assert_eq!(scene.meta.name, "TextFade");
+        assert_eq!(scene.compositions["main"].layers[0].id, "title");
+    }
+
+    #[test]
+    fn parse_valid_image_scale() {
+        let json = include_str!("../../../../tests/fixtures/valid/image_scale.mmot.json");
+        let scene = parse(json).unwrap();
+        assert_eq!(scene.meta.name, "ImageScale");
+        assert_eq!(scene.compositions["main"].layers[0].id, "logo");
+    }
+
+    #[test]
+    fn parse_bad_easing_returns_error() {
+        let json = include_str!("../../../../tests/fixtures/invalid/bad_easing.mmot.json");
+        let err = parse(json).unwrap_err();
+        assert!(matches!(err, crate::error::MmotError::Parse { .. }));
+    }
+
+    #[test]
+    fn parse_prop_type_mismatch_returns_error() {
+        let json = include_str!("../../../../tests/fixtures/invalid/prop_type_mismatch.mmot.json");
+        let err = parse(json).unwrap_err();
+        assert!(matches!(err, crate::error::MmotError::Parse { .. }));
+        assert!(err.to_string().contains("bgColor"));
+    }
 }

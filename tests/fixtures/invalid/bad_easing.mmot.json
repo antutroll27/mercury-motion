@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "BadEasing",
+    "width": 640, "height": 360,
+    "fps": 30, "duration": 30,
+    "background": "#000000",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "bg",
+          "type": "solid",
+          "in": 0, "out": 30,
+          "color": "#ff0000",
+          "transform": {
+            "position": [320.0, 180.0],
+            "scale": [1.0, 1.0],
+            "opacity": [
+              { "t": 0, "v": 1.0, "easing": "not_a_real_easing" },
+              { "t": 30, "v": 0.0 }
+            ],
+            "rotation": 0.0
+          }
+        }
+      ]
+    }
+  }
+}

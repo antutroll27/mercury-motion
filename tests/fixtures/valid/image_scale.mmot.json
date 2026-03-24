@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "ImageScale",
+    "width": 640, "height": 360,
+    "fps": 30, "duration": 30,
+    "background": "#1a1a2e",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "logo",
+          "type": "image",
+          "in": 0, "out": 30,
+          "src": "assets/logo.png",
+          "transform": {
+            "position": [320.0, 180.0],
+            "scale": [
+              { "t": 0, "v": [0.5, 0.5], "easing": "ease_out" },
+              { "t": 15, "v": [1.0, 1.0] }
+            ],
+            "opacity": 1.0,
+            "rotation": 0.0
+          }
+        }
+      ]
+    }
+  }
+}

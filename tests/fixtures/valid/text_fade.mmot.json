@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "TextFade",
+    "width": 640, "height": 360,
+    "fps": 30, "duration": 30,
+    "background": "#000000",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "title",
+          "type": "text",
+          "in": 0, "out": 30,
+          "text": "Hello Mercury",
+          "font": {
+            "family": "Arial",
+            "size": 48.0,
+            "weight": 700,
+            "color": "#ffffff"
+          },
+          "transform": {
+            "position": [320.0, 180.0],
+            "scale": [1.0, 1.0],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_in_out" },
+              { "t": 15, "v": 1.0, "easing": "ease_in_out" },
+              { "t": 25, "v": 1.0, "easing": "ease_out" },
+              { "t": 30, "v": 0.0 }
+            ],
+            "rotation": 0.0
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "PropTypeMismatch",
+    "width": 640, "height": 360,
+    "fps": 30, "duration": 30,
+    "background": "${bgColor}",
+    "root": "main"
+  },
+  "props": {
+    "bgColor": {
+      "type": "color",
+      "default": 12345
+    }
+  },
+  "compositions": {
+    "main": {
+      "layers": []
+    }
+  }
+}
