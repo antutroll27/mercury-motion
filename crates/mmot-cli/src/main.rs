@@ -31,6 +31,12 @@ enum Commands {
         props: Vec<(String, String)>,
         #[arg(short, long)]
         verbose: bool,
+        /// Output format: mp4, gif, webm
+        #[arg(short, long, default_value = "mp4")]
+        format: String,
+        /// Include audio tracks in output
+        #[arg(long)]
+        include_audio: bool,
     },
     /// Validate a .mmot.json file without rendering
     Validate { file: PathBuf },
@@ -76,11 +82,20 @@ fn run(cli: Cli) -> anyhow::Result<()> {
             concurrency,
             props,
             verbose,
+            format,
+            include_audio,
         } => {
             let json = std::fs::read_to_string(&file)
                 .with_context(|| format!("cannot read {}", file.display()))?;
 
             let cli_props: HashMap<String, String> = props.into_iter().collect();
+
+            let format = match format.to_lowercase().as_str() {
+                "mp4" => mmot_core::pipeline::OutputFormat::Mp4,
+                "gif" => mmot_core::pipeline::OutputFormat::Gif,
+                "webm" => mmot_core::pipeline::OutputFormat::Webm,
+                other => anyhow::bail!("unsupported format: '{other}' (expected mp4, gif, or webm)"),
+            };
 
             let progress: Option<mmot_core::pipeline::ProgressFn> = if verbose {
                 Some(std::sync::Arc::new(|current, total| {
@@ -92,12 +107,12 @@ fn run(cli: Cli) -> anyhow::Result<()> {
 
             let opts = mmot_core::pipeline::RenderOptions {
                 output_path: output.clone(),
-                format: mmot_core::pipeline::OutputFormat::Mp4,
+                format,
                 quality,
                 frame_range: None,
                 concurrency,
                 backend: mmot_core::pipeline::RenderBackend::Cpu,
-                include_audio: false,
+                include_audio,
             };
 
             mmot_core::pipeline::render_scene_with_props(&json, &cli_props, opts, progress)?;
