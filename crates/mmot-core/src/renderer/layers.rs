@@ -22,6 +22,7 @@ pub fn draw_layer(canvas: &Canvas, layer: &ResolvedLayer, width: u32, height: u3
             font_weight,
             color,
             align,
+            custom_font_data,
         } => {
             let t_ref = &layer.transform;
             text::draw(
@@ -34,6 +35,7 @@ pub fn draw_layer(canvas: &Canvas, layer: &ResolvedLayer, width: u32, height: u3
                 *font_weight,
                 color,
                 align,
+                custom_font_data.as_deref(),
             );
         }
         ResolvedContent::Shape { shape: s } => {

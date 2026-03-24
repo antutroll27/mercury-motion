@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::Path;
 
 use mmot_core::{parser, pipeline, renderer};
@@ -6,7 +7,8 @@ fn render_frame_rgba(fixture: &str, frame: u64) -> Vec<u8> {
     let json =
         std::fs::read_to_string(Path::new("../../tests/fixtures/valid").join(fixture)).unwrap();
     let scene = parser::parse(&json).unwrap();
-    let frame_scene = pipeline::evaluate_scene(&scene, frame).unwrap();
+    let no_fonts = HashMap::new();
+    let frame_scene = pipeline::evaluate_scene(&scene, frame, &no_fonts).unwrap();
     renderer::render(&frame_scene).unwrap()
 }
 

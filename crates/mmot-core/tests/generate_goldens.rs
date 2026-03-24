@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use mmot_core::{parser, pipeline, renderer};
 
 #[test]
@@ -5,7 +7,8 @@ use mmot_core::{parser, pipeline, renderer};
 fn generate_golden_minimal() {
     let json = std::fs::read_to_string("../../tests/fixtures/valid/minimal.mmot.json").unwrap();
     let scene = parser::parse(&json).unwrap();
-    let frame_scene = pipeline::evaluate_scene(&scene, 0).unwrap();
+    let no_fonts = HashMap::new();
+    let frame_scene = pipeline::evaluate_scene(&scene, 0, &no_fonts).unwrap();
     let w = frame_scene.width;
     let h = frame_scene.height;
     let rgba = renderer::render(&frame_scene).unwrap();

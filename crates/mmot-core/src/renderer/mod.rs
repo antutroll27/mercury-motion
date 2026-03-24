@@ -51,6 +51,7 @@ pub enum ResolvedContent {
         font_weight: u32,
         color: String,
         align: TextAlign,
+        custom_font_data: Option<Vec<u8>>,
     },
     Shape {
         shape: shape::ResolvedShape,

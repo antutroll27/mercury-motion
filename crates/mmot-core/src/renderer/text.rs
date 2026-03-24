@@ -14,6 +14,7 @@ pub fn draw(
     font_weight: u32,
     color: &str,
     align: &TextAlign,
+    custom_font_data: Option<&[u8]>,
 ) {
     let font_mgr = FontMgr::new();
     let style = FontStyle::new(
@@ -21,10 +22,20 @@ pub fn draw(
         skia_safe::font_style::Width::NORMAL,
         skia_safe::font_style::Slant::Upright,
     );
-    let typeface = font_mgr
-        .match_family_style(font_family, style)
-        .or_else(|| font_mgr.match_family_style("sans-serif", style))
-        .unwrap_or_else(|| font_mgr.legacy_make_typeface(None, style).unwrap());
+    let typeface = if let Some(data) = custom_font_data {
+        font_mgr.new_from_data(data, None).unwrap_or_else(|| {
+            tracing::warn!("failed to parse custom font data, falling back to system font");
+            font_mgr
+                .match_family_style(font_family, style)
+                .or_else(|| font_mgr.match_family_style("sans-serif", style))
+                .unwrap_or_else(|| font_mgr.legacy_make_typeface(None, style).expect("no system fonts available"))
+        })
+    } else {
+        font_mgr
+            .match_family_style(font_family, style)
+            .or_else(|| font_mgr.match_family_style("sans-serif", style))
+            .unwrap_or_else(|| font_mgr.legacy_make_typeface(None, style).expect("no system fonts available"))
+    };
 
     let font = Font::new(typeface, font_size as f32);
     let (hex_r, hex_g, hex_b) = parse_hex_color(color);

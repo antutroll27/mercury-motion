@@ -1,4 +1,5 @@
 pub mod audio;
+pub mod font;
 pub mod image;
 
 /// Decoded image asset: raw RGBA bytes + dimensions.

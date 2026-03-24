@@ -77,12 +77,30 @@ pub fn render_scene_with_props(
             .ok();
     }
 
+    // Pre-load all font assets ONCE before the parallel render loop.
+    // This avoids N concurrent disk reads inside evaluate_composition.
+    let font_cache: HashMap<String, Vec<u8>> = {
+        let mut cache = HashMap::new();
+        for font_asset in &scene.assets.fonts {
+            match crate::assets::font::load_font(Path::new(&font_asset.src)) {
+                Ok(data) => {
+                    cache.insert(font_asset.id.clone(), data);
+                }
+                Err(e) => {
+                    tracing::warn!("failed to load custom font '{}': {e}", font_asset.id);
+                }
+            }
+        }
+        cache
+    };
+
     // Render all frames in parallel, collect in order
     let scene = Arc::new(scene);
+    let font_cache_ref = &font_cache;
     let frames: Vec<Result<Vec<u8>>> = (start..start + total)
         .into_par_iter()
         .map(|frame_num| {
-            let frame_scene = evaluate_scene(&scene, frame_num)?;
+            let frame_scene = evaluate_scene(&scene, frame_num, font_cache_ref)?;
             let rgba = render_frame(&frame_scene).map_err(|e| match e {
                 MmotError::RenderFailed { reason, .. } => MmotError::RenderFailed {
                     frame: frame_num,
@@ -191,8 +209,14 @@ fn collect_audio(scene: &Scene) -> Result<Option<(Vec<f32>, u32, u32)>> {
 
 /// Evaluate a scene at a specific frame number into a FrameScene.
 /// Supports recursive precomp rendering.
-pub fn evaluate_scene(scene: &Scene, frame: u64) -> Result<FrameScene> {
-    let layers = evaluate_composition(scene, &scene.meta.root, frame, 0)?;
+///
+/// `font_cache` maps font asset IDs to their raw bytes, loaded once before rendering.
+pub fn evaluate_scene(
+    scene: &Scene,
+    frame: u64,
+    font_cache: &HashMap<String, Vec<u8>>,
+) -> Result<FrameScene> {
+    let layers = evaluate_composition(scene, &scene.meta.root, frame, 0, font_cache)?;
     Ok(FrameScene {
         width: scene.meta.width,
         height: scene.meta.height,
@@ -234,6 +258,7 @@ fn evaluate_composition(
     comp_id: &str,
     frame: u64,
     depth: u32,
+    font_cache: &HashMap<String, Vec<u8>>,
 ) -> Result<Vec<ResolvedLayer>> {
     // Guard against circular composition references
     if depth > 32 {
@@ -327,14 +352,18 @@ fn evaluate_composition(
             LayerContent::Solid { color } => ResolvedContent::Solid {
                 color: color.clone(),
             },
-            LayerContent::Text { text, font, align } => ResolvedContent::Text {
-                text: text.clone(),
-                font_family: font.family.clone(),
-                font_size: font.size,
-                font_weight: font.weight,
-                color: font.color.clone(),
-                align: align.clone(),
-            },
+            LayerContent::Text { text, font, align } => {
+                let custom_font_data = font_cache.get(&font.family).cloned();
+                ResolvedContent::Text {
+                    text: text.clone(),
+                    font_family: font.family.clone(),
+                    font_size: font.size,
+                    font_weight: font.weight,
+                    color: font.color.clone(),
+                    align: align.clone(),
+                    custom_font_data,
+                }
+            }
             LayerContent::Shape { shape } => {
                 let resolved = match shape {
                     ShapeSpec::Rect {
@@ -397,7 +426,8 @@ fn evaluate_composition(
             },
             LayerContent::Composition { id } => {
                 // Recursively render the referenced composition
-                let sub_layers = evaluate_composition(scene, id, frame, depth + 1)?;
+                let sub_layers =
+                    evaluate_composition(scene, id, frame, depth + 1, font_cache)?;
                 resolved_layers.extend(sub_layers);
                 continue;
             }
@@ -552,7 +582,8 @@ mod tests {
         }"##;
 
         let scene = parse(json).unwrap();
-        let frame_scene = evaluate_scene(&scene, 0).unwrap();
+        let no_fonts = HashMap::new();
+        let frame_scene = evaluate_scene(&scene, 0, &no_fonts).unwrap();
         // The precomp should have resolved the sub composition's solid layer
         assert_eq!(frame_scene.layers.len(), 1);
         assert!(matches!(
@@ -565,13 +596,14 @@ mod tests {
     fn sequence_layers_play_back_to_back() {
         let json = include_str!("../../../tests/fixtures/valid/sequence.mmot.json");
         let scene = parse(json).unwrap();
+        let no_fonts = HashMap::new();
 
         // With crossfade duration=10 and each layer duration=30:
         //   Layer 0 (red):  frames 0..30
         //   Layer 1 (blue): frames 20..50  (starts at 30-10=20)
 
         // Frame 0: only red visible
-        let fs0 = evaluate_scene(&scene, 0).unwrap();
+        let fs0 = evaluate_scene(&scene, 0, &no_fonts).unwrap();
         assert_eq!(fs0.layers.len(), 1);
         assert!(matches!(
             fs0.layers[0].content,
@@ -579,7 +611,7 @@ mod tests {
         ));
 
         // Frame 25: both visible (overlap zone: red 0..30, blue 20..50)
-        let fs25 = evaluate_scene(&scene, 25).unwrap();
+        let fs25 = evaluate_scene(&scene, 25, &no_fonts).unwrap();
         assert_eq!(
             fs25.layers.len(),
             2,
@@ -587,7 +619,7 @@ mod tests {
         );
 
         // Frame 40: only blue visible
-        let fs40 = evaluate_scene(&scene, 40).unwrap();
+        let fs40 = evaluate_scene(&scene, 40, &no_fonts).unwrap();
         assert_eq!(fs40.layers.len(), 1);
         assert!(matches!(
             fs40.layers[0].content,
@@ -624,11 +656,12 @@ mod tests {
         }"##;
 
         let scene = parse(json).unwrap();
+        let no_fonts = HashMap::new();
 
         // Layer a: 0..20, Layer b: 20..40 (no overlap)
 
         // Frame 10: only layer a
-        let fs10 = evaluate_scene(&scene, 10).unwrap();
+        let fs10 = evaluate_scene(&scene, 10, &no_fonts).unwrap();
         assert_eq!(fs10.layers.len(), 1);
         assert!(matches!(
             fs10.layers[0].content,
@@ -636,11 +669,11 @@ mod tests {
         ));
 
         // Frame 19: still only layer a (out_point is exclusive)
-        let fs19 = evaluate_scene(&scene, 19).unwrap();
+        let fs19 = evaluate_scene(&scene, 19, &no_fonts).unwrap();
         assert_eq!(fs19.layers.len(), 1);
 
         // Frame 20: only layer b (a ended at 20, b starts at 20)
-        let fs20 = evaluate_scene(&scene, 20).unwrap();
+        let fs20 = evaluate_scene(&scene, 20, &no_fonts).unwrap();
         assert_eq!(fs20.layers.len(), 1);
         assert!(matches!(
             fs20.layers[0].content,
@@ -668,17 +701,18 @@ mod tests {
         }"##;
 
         let scene = parse(json).unwrap();
+        let no_fonts = HashMap::new();
 
         // Frame 0: layer not yet visible
-        let fs0 = evaluate_scene(&scene, 0).unwrap();
+        let fs0 = evaluate_scene(&scene, 0, &no_fonts).unwrap();
         assert_eq!(fs0.layers.len(), 0);
 
         // Frame 10: layer visible
-        let fs10 = evaluate_scene(&scene, 10).unwrap();
+        let fs10 = evaluate_scene(&scene, 10, &no_fonts).unwrap();
         assert_eq!(fs10.layers.len(), 1);
 
         // Frame 20: layer no longer visible (exclusive out)
-        let fs20 = evaluate_scene(&scene, 20).unwrap();
+        let fs20 = evaluate_scene(&scene, 20, &no_fonts).unwrap();
         assert_eq!(fs20.layers.len(), 0);
     }
 
@@ -686,10 +720,11 @@ mod tests {
     fn crossfade_modifies_opacity() {
         let json = include_str!("../../../tests/fixtures/valid/sequence.mmot.json");
         let scene = parse(json).unwrap();
+        let no_fonts = HashMap::new();
 
         // Frame 25 is in the overlap zone (red: 0-30, blue: 20-50, overlap: 20-30)
         // Progress at frame 25: (25-20)/(30-20) = 0.5
-        let fs = evaluate_scene(&scene, 25).unwrap();
+        let fs = evaluate_scene(&scene, 25, &no_fonts).unwrap();
         assert_eq!(fs.layers.len(), 2);
 
         // First layer (red/outgoing) should have opacity ~0.5
