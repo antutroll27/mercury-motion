@@ -27,3 +27,11 @@ fn golden_minimal_frame_0() {
     assert_eq!(rendered.len(), reference.len(), "frame size mismatch");
     assert_eq!(rendered, reference, "pixel mismatch — renderer output changed");
 }
+
+#[test]
+fn golden_gradient_frame_0() {
+    let rendered = render_frame_rgba("gradient.mmot.json", 0);
+    let reference = load_reference_png("gradient", 0);
+    assert_eq!(rendered.len(), reference.len(), "frame size mismatch");
+    assert_eq!(rendered, reference, "pixel mismatch — renderer output changed");
+}
