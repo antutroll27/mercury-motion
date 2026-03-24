@@ -35,9 +35,13 @@ jobs:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
 
-      - name: Install Skia build deps (Linux)
+      - name: Install build deps (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y python3 libfontconfig-dev libgl-dev libgles2-mesa-dev
+        run: sudo apt-get update && sudo apt-get install -y python3 nasm libfontconfig-dev libgl-dev libgles2-mesa-dev
+
+      - name: Install nasm (macOS)
+        if: runner.os == 'macOS'
+        run: brew install nasm
 
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }} -p mmot

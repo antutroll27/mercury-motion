@@ -10,9 +10,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Install Skia build deps (Linux)
+      - name: Install build deps (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y python3 libfontconfig-dev libgl-dev libgles2-mesa-dev
+        run: sudo apt-get update && sudo apt-get install -y python3 nasm libfontconfig-dev libgl-dev libgles2-mesa-dev
+      - name: Install nasm (macOS)
+        if: runner.os == 'macOS'
+        run: brew install nasm
       - run: cargo fmt --check
       - run: cargo clippy -- -D warnings
       - run: cargo test

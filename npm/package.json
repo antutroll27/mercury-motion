@@ -1,0 +1,37 @@
+{
+  "name": "mercury-motion",
+  "version": "0.1.0",
+  "description": "Native Rust video creation engine — JSON to MP4/WebM/GIF, 100x faster than Remotion",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/antutroll27/mercury-motion"
+  },
+  "homepage": "https://github.com/antutroll27/mercury-motion",
+  "keywords": [
+    "video",
+    "motion-graphics",
+    "rendering",
+    "animation",
+    "remotion",
+    "mp4",
+    "webm",
+    "gif",
+    "encoder"
+  ],
+  "bin": {
+    "mmot": "bin/mmot.js"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "files": [
+    "bin/",
+    "install.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=16"
+  }
+}
