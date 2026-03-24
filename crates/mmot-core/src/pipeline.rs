@@ -106,31 +106,47 @@ pub fn render_scene_with_props(
         None
     };
 
-    // Encode to MP4
-    match audio_data {
-        Some((samples, sample_rate, channels)) => {
-            let pcm_s16 = crate::assets::audio::samples_to_pcm_s16(&samples);
-            crate::encoder::mp4::encode_with_audio(
+    // Encode to output format
+    match opts.format {
+        OutputFormat::Mp4 => {
+            match audio_data {
+                Some((samples, sample_rate, channels)) => {
+                    let pcm_s16 = crate::assets::audio::samples_to_pcm_s16(&samples);
+                    crate::encoder::mp4::encode_with_audio(
+                        frames,
+                        scene.meta.width,
+                        scene.meta.height,
+                        scene.meta.fps,
+                        opts.quality,
+                        &pcm_s16,
+                        sample_rate,
+                        channels,
+                        &opts.output_path,
+                    )?;
+                }
+                None => {
+                    crate::encoder::mp4::encode(
+                        frames,
+                        scene.meta.width,
+                        scene.meta.height,
+                        scene.meta.fps,
+                        opts.quality,
+                        &opts.output_path,
+                    )?;
+                }
+            }
+        }
+        OutputFormat::Gif => {
+            crate::encoder::gif::encode(
                 frames,
                 scene.meta.width,
                 scene.meta.height,
                 scene.meta.fps,
-                opts.quality,
-                &pcm_s16,
-                sample_rate,
-                channels,
                 &opts.output_path,
             )?;
         }
-        None => {
-            crate::encoder::mp4::encode(
-                frames,
-                scene.meta.width,
-                scene.meta.height,
-                scene.meta.fps,
-                opts.quality,
-                &opts.output_path,
-            )?;
+        OutputFormat::Webm => {
+            return Err(MmotError::Encoder("WebM output not yet implemented".into()));
         }
     }
 

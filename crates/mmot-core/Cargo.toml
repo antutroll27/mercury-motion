@@ -21,6 +21,7 @@ serde_path_to_error = "0.1"
 muxide = "0.2"
 symphonia = { version = "0.5", features = ["mp3", "wav", "flac", "aac", "ogg", "vorbis", "pcm", "adpcm"] }
 regex = "1"
+gif = "0.13"
 opus = { version = "0.3", optional = true }
 
 [dev-dependencies]
