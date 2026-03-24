@@ -2,7 +2,7 @@ use skia_safe::Canvas;
 
 use crate::renderer::{ResolvedContent, ResolvedLayer};
 
-use super::{image as img_renderer, shape, solid, text};
+use super::{gradient, image as img_renderer, shape, solid, text};
 
 /// Draw a single resolved layer onto the canvas.
 pub fn draw_layer(canvas: &Canvas, layer: &ResolvedLayer, width: u32, height: u32) {
@@ -38,6 +38,13 @@ pub fn draw_layer(canvas: &Canvas, layer: &ResolvedLayer, width: u32, height: u3
         }
         ResolvedContent::Shape { shape: s } => {
             shape::draw(canvas, s, &paint);
+        }
+        ResolvedContent::Gradient {
+            gradient: g,
+            width,
+            height,
+        } => {
+            gradient::draw(canvas, g, *width, *height, &paint);
         }
     }
     canvas.restore();

@@ -57,6 +57,9 @@ pub enum LayerContent {
     Shape {
         shape: ShapeSpec,
     },
+    Gradient {
+        gradient: GradientSpec,
+    },
 }
 
 fn default_center_align() -> TextAlign {
@@ -137,6 +140,29 @@ pub enum ShapeSpec {
 pub struct StrokeSpec {
     pub color: String,
     pub width: f64,
+}
+
+/// Gradient specification — linear or radial.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "gradient_type", rename_all = "snake_case")]
+pub enum GradientSpec {
+    Linear {
+        start: [f64; 2],
+        end: [f64; 2],
+        colors: Vec<GradientStop>,
+    },
+    Radial {
+        center: [f64; 2],
+        radius: f64,
+        colors: Vec<GradientStop>,
+    },
+}
+
+/// A single color stop in a gradient.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GradientStop {
+    pub offset: f64,
+    pub color: String,
 }
 
 /// A composition — an ordered list of layers (first = bottom of visual stack).

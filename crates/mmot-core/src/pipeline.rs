@@ -308,6 +308,11 @@ fn evaluate_composition(
                 };
                 ResolvedContent::Shape { shape: resolved }
             }
+            LayerContent::Gradient { gradient } => ResolvedContent::Gradient {
+                gradient: gradient.clone(),
+                width: scene.meta.width,
+                height: scene.meta.height,
+            },
             LayerContent::Composition { id } => {
                 // Recursively render the referenced composition
                 let sub_layers = evaluate_composition(scene, id, frame, depth + 1)?;

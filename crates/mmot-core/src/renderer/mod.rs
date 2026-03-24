@@ -1,3 +1,4 @@
+mod gradient;
 mod image;
 pub mod layers;
 pub mod shape;
@@ -52,6 +53,11 @@ pub enum ResolvedContent {
     },
     Shape {
         shape: shape::ResolvedShape,
+    },
+    Gradient {
+        gradient: crate::schema::GradientSpec,
+        width: u32,
+        height: u32,
     },
 }
 
@@ -228,5 +234,83 @@ mod tests {
         let rgba = render(&frame).unwrap();
         let has_green = rgba.chunks(4).any(|px| px[1] > 200 && px[0] < 50);
         assert!(has_green, "polygon triangle should have green pixels");
+    }
+
+    #[test]
+    fn gradient_linear_renders() {
+        use crate::schema::{GradientSpec, GradientStop};
+        let frame = FrameScene {
+            width: 100,
+            height: 100,
+            background: "#000000".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 50.0, y: 50.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Gradient {
+                    gradient: GradientSpec::Linear {
+                        start: [0.0, 0.0],
+                        end: [1.0, 0.0],
+                        colors: vec![
+                            GradientStop {
+                                offset: 0.0,
+                                color: "#ff0000".into(),
+                            },
+                            GradientStop {
+                                offset: 1.0,
+                                color: "#0000ff".into(),
+                            },
+                        ],
+                    },
+                    width: 100,
+                    height: 100,
+                },
+            }],
+        };
+        let rgba = render(&frame).unwrap();
+        assert_eq!(rgba.len(), 100 * 100 * 4);
+    }
+
+    #[test]
+    fn gradient_radial_renders() {
+        use crate::schema::{GradientSpec, GradientStop};
+        let frame = FrameScene {
+            width: 100,
+            height: 100,
+            background: "#000000".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 50.0, y: 50.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Gradient {
+                    gradient: GradientSpec::Radial {
+                        center: [0.5, 0.5],
+                        radius: 0.5,
+                        colors: vec![
+                            GradientStop {
+                                offset: 0.0,
+                                color: "#ffffff".into(),
+                            },
+                            GradientStop {
+                                offset: 1.0,
+                                color: "#000000".into(),
+                            },
+                        ],
+                    },
+                    width: 100,
+                    height: 100,
+                },
+            }],
+        };
+        let rgba = render(&frame).unwrap();
+        assert_eq!(rgba.len(), 100 * 100 * 4);
     }
 }
