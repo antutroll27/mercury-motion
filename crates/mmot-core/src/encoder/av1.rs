@@ -71,6 +71,12 @@ pub(crate) fn map_quality_to_quantizer(quality: u8) -> usize {
 fn rgba_to_yuv420(rgba: &[u8], width: u32, height: u32, frame: &mut rav1e::prelude::Frame<u8>) {
     let w = width as usize;
     let h = height as usize;
+    let expected = w * h * 4;
+    debug_assert!(
+        rgba.len() >= expected,
+        "RGBA buffer too small: {} < {} ({}x{}x4)",
+        rgba.len(), expected, w, h
+    );
 
     // Write Y plane
     {

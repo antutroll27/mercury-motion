@@ -1,6 +1,10 @@
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
 use regex::Regex;
+
+static PROP_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}").expect("hardcoded regex"));
 
 /// Substitute `${varName}` placeholders in a JSON string with provided values.
 ///
@@ -11,8 +15,7 @@ pub fn substitute(json: &str, props: &HashMap<String, String>) -> String {
         return json.to_string();
     }
 
-    let re = Regex::new(r"\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}").expect("invalid regex");
-    re.replace_all(json, |caps: &regex::Captures| {
+    PROP_RE.replace_all(json, |caps: &regex::Captures| {
         let key = &caps[1];
         props.get(key).cloned().unwrap_or_else(|| caps[0].to_string())
     })
