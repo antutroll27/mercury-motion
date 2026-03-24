@@ -7,8 +7,8 @@ pub mod transition;
 
 pub use animatable::{AnimatableValue, Keyframe, Vec2};
 pub use composition::{
-    Composition, Compositions, FontSpec, GradientSpec, GradientStop, Layer, LayerContent, ShapeSpec,
-    StrokeSpec, TextAlign,
+    Composition, Compositions, FillMode, FontSpec, GradientSpec, GradientStop, Layer, LayerContent,
+    ShapeSpec, StrokeSpec, TextAlign,
 };
 pub use easing::EasingValue;
 pub use scene::{Assets, Meta, PropDef, PropType, Scene};

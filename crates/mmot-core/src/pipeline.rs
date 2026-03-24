@@ -491,6 +491,7 @@ fn evaluate_composition(
             opacity,
             transform,
             content,
+            fill_parent: layer.fill.as_ref().is_some_and(|f| matches!(f, crate::schema::composition::FillMode::Parent)),
         });
     }
 
@@ -782,5 +783,39 @@ mod tests {
         let fs = evaluate_scene(&scene, 0, &font_cache).expect("evaluate should not fail");
         // Without the ffmpeg feature (or with a missing file), the video layer is skipped
         assert_eq!(fs.layers.len(), 0);
+    }
+
+    #[test]
+    fn deserialise_fill_parent() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": {"name":"Fill","width":100,"height":100,"fps":30,"duration":1,"background":"#000","root":"main"},
+            "compositions": {"main": {"layers": [{
+                "id": "bg", "type": "solid", "in": 0, "out": 1,
+                "color": "#ff0000", "fill": "parent",
+                "transform": {"position":[0,0],"scale":[1,1],"opacity":1.0,"rotation":0.0}
+            }]}}
+        }"##;
+        let scene = parse(json).unwrap();
+        let layer = &scene.compositions["main"].layers[0];
+        assert!(layer.fill.is_some());
+    }
+
+    #[test]
+    fn fill_parent_resolves_in_pipeline() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": {"name":"Fill","width":100,"height":100,"fps":30,"duration":1,"background":"#000","root":"main"},
+            "compositions": {"main": {"layers": [{
+                "id": "bg", "type": "solid", "in": 0, "out": 1,
+                "color": "#ff0000", "fill": "parent",
+                "transform": {"position":[0,0],"scale":[1,1],"opacity":1.0,"rotation":0.0}
+            }]}}
+        }"##;
+        let scene = parse(json).unwrap();
+        let font_cache = HashMap::new();
+        let fs = evaluate_scene(&scene, 0, &font_cache).unwrap();
+        assert_eq!(fs.layers.len(), 1);
+        assert!(fs.layers[0].fill_parent);
     }
 }

@@ -5,6 +5,13 @@ use serde::{Deserialize, Serialize};
 use crate::schema::{AnimatableValue, Transform};
 use crate::schema::transition::TransitionSpec;
 
+/// Fill mode for layers — equivalent to Remotion's `<AbsoluteFill>`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FillMode {
+    Parent,
+}
+
 /// A single layer in a composition.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Layer {
@@ -16,6 +23,9 @@ pub struct Layer {
     #[serde(rename = "out")]
     pub out_point: u64,
     pub transform: Transform,
+    /// When set to `"parent"`, the layer fills the entire canvas (position/rotation/scale ignored).
+    #[serde(default)]
+    pub fill: Option<FillMode>,
     #[serde(flatten)]
     pub content: LayerContent,
 }

@@ -24,6 +24,8 @@ pub struct ResolvedLayer {
     pub opacity: f64,
     pub transform: ResolvedTransform,
     pub content: ResolvedContent,
+    /// When `true`, the layer fills the entire canvas (AbsoluteFill).
+    pub fill_parent: bool,
 }
 
 /// Resolved transform values (no keyframes).
@@ -122,6 +124,7 @@ mod tests {
                 content: ResolvedContent::Solid {
                     color: color.into(),
                 },
+                fill_parent: false,
             }],
         }
     }
@@ -168,6 +171,7 @@ mod tests {
                         stroke_width: 0.0,
                     },
                 },
+                fill_parent: false,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -201,6 +205,7 @@ mod tests {
                         stroke_width: 2.0,
                     },
                 },
+                fill_parent: false,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -231,6 +236,7 @@ mod tests {
                         stroke_width: 0.0,
                     },
                 },
+                fill_parent: false,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -271,6 +277,7 @@ mod tests {
                     width: 100,
                     height: 100,
                 },
+                fill_parent: false,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -310,9 +317,35 @@ mod tests {
                     width: 100,
                     height: 100,
                 },
+                fill_parent: false,
             }],
         };
         let rgba = render(&frame).unwrap();
         assert_eq!(rgba.len(), 100 * 100 * 4);
+    }
+
+    #[test]
+    fn fill_parent_layer_fills_canvas() {
+        let frame = FrameScene {
+            width: 100,
+            height: 100,
+            background: "#000000".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 0.0, y: 0.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Solid {
+                    color: "#ff0000".into(),
+                },
+                fill_parent: true,
+            }],
+        };
+        let rgba = render(&frame).unwrap();
+        // Every pixel should be red (layer fills entire canvas)
+        assert!(rgba.chunks(4).all(|px| px[0] == 255 && px[1] == 0 && px[2] == 0));
     }
 }

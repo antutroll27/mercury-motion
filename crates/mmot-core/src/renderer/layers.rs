@@ -7,7 +7,14 @@ use super::{gradient, image as img_renderer, shape, solid, text};
 /// Draw a single resolved layer onto the canvas.
 pub fn draw_layer(canvas: &Canvas, layer: &ResolvedLayer, width: u32, height: u32) {
     canvas.save();
-    let paint = apply_transform(canvas, layer);
+    let paint = if layer.fill_parent {
+        // AbsoluteFill: skip transform, render at (0,0) filling the full canvas.
+        let mut paint = skia_safe::Paint::default();
+        paint.set_alpha_f(layer.opacity as f32);
+        paint
+    } else {
+        apply_transform(canvas, layer)
+    };
     match &layer.content {
         ResolvedContent::Solid { color } => solid::draw(canvas, color, width, height, &paint),
         ResolvedContent::Image {
