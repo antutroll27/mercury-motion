@@ -17,6 +17,16 @@ fn easing_kind(e: &EasingValue) -> EasingKind {
             x2: *x2,
             y2: *y2,
         },
+        EasingValue::Spring {
+            mass,
+            stiffness,
+            damping,
+            ..
+        } => EasingKind::Spring {
+            mass: *mass,
+            stiffness: *stiffness,
+            damping: *damping,
+        },
     }
 }
 

@@ -68,6 +68,13 @@ mod tests {
     }
 
     #[test]
+    fn parse_valid_spring() {
+        let json = include_str!("../../../../tests/fixtures/valid/spring.mmot.json");
+        let scene = parse(json).unwrap();
+        assert_eq!(scene.meta.name, "SpringAnim");
+    }
+
+    #[test]
     fn parse_prop_type_mismatch_returns_error() {
         let json = include_str!("../../../../tests/fixtures/invalid/prop_type_mismatch.mmot.json");
         let err = parse(json).unwrap_err();

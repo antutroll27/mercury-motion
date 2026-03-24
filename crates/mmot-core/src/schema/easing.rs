@@ -17,6 +17,17 @@ pub enum EasingValue {
         x2: f64,
         y2: f64,
     },
+    /// A spring physics easing (damped harmonic oscillator).
+    Spring {
+        #[serde(rename = "type")]
+        kind: SpringTag,
+        #[serde(default = "default_one")]
+        mass: f64,
+        #[serde(default = "default_stiffness")]
+        stiffness: f64,
+        #[serde(default = "default_damping")]
+        damping: f64,
+    },
 }
 
 impl EasingValue {
@@ -47,6 +58,22 @@ pub enum NamedEasing {
 #[serde(rename_all = "snake_case")]
 pub enum CubicBezierTag {
     CubicBezier,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SpringTag {
+    Spring,
+}
+
+fn default_one() -> f64 {
+    1.0
+}
+fn default_stiffness() -> f64 {
+    100.0
+}
+fn default_damping() -> f64 {
+    10.0
 }
 
 #[cfg(test)]
@@ -80,5 +107,43 @@ mod tests {
         let json = r#""linear""#;
         let e: EasingValue = serde_json::from_str(json).unwrap();
         assert!(matches!(e, EasingValue::Named(NamedEasing::Linear)));
+    }
+
+    #[test]
+    fn deserialise_spring() {
+        let json = r#"{"type":"spring","mass":1.0,"stiffness":170.0,"damping":26.0}"#;
+        let e: EasingValue = serde_json::from_str(json).unwrap();
+        match e {
+            EasingValue::Spring {
+                mass,
+                stiffness,
+                damping,
+                ..
+            } => {
+                assert_eq!(mass, 1.0);
+                assert_eq!(stiffness, 170.0);
+                assert_eq!(damping, 26.0);
+            }
+            _ => panic!("expected Spring"),
+        }
+    }
+
+    #[test]
+    fn deserialise_spring_defaults() {
+        let json = r#"{"type":"spring"}"#;
+        let e: EasingValue = serde_json::from_str(json).unwrap();
+        match e {
+            EasingValue::Spring {
+                mass,
+                stiffness,
+                damping,
+                ..
+            } => {
+                assert_eq!(mass, 1.0);
+                assert_eq!(stiffness, 100.0);
+                assert_eq!(damping, 10.0);
+            }
+            _ => panic!("expected Spring with defaults"),
+        }
     }
 }

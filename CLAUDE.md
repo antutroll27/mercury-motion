@@ -55,12 +55,14 @@ Cargo.toml          # Workspace root
 # mmot-core/Cargo.toml
 [features]
 default = []
+audio-codec = ["opus"]                  # Opus audio encoding (requires C libopus)
 gpu = ["wgpu"]                          # wgpu GPU backend (Vulkan/Metal/DX12)
 ffmpeg = ["ffmpeg-next", "ffmpeg-sys-next"]  # Extended codec support
 filmtools-ai = ["ort"]                  # ONNX model loading (Depth Anything, SAM2)
 ```
 
 Default build uses CPU Skia renderer + rav1e encoder (zero C deps).
+`--features audio-codec` adds Opus audio encoding (requires C compiler + cmake for libopus).
 `--features ffmpeg` adds H.264/HEVC/ProRes support via libav.
 
 ---
