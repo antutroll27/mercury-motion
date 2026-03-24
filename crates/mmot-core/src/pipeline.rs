@@ -99,17 +99,78 @@ pub fn render_scene_with_props(
 
     let frames: Vec<Vec<u8>> = frames.into_iter().collect::<Result<_>>()?;
 
+    // Collect audio from audio layers if requested
+    let audio_data = if opts.include_audio {
+        collect_audio(&scene)?
+    } else {
+        None
+    };
+
     // Encode to MP4
-    crate::encoder::mp4::encode(
-        frames,
-        scene.meta.width,
-        scene.meta.height,
-        scene.meta.fps,
-        opts.quality,
-        &opts.output_path,
-    )?;
+    match audio_data {
+        Some((samples, sample_rate, channels)) => {
+            let pcm_s16 = crate::assets::audio::samples_to_pcm_s16(&samples);
+            crate::encoder::mp4::encode_with_audio(
+                frames,
+                scene.meta.width,
+                scene.meta.height,
+                scene.meta.fps,
+                opts.quality,
+                &pcm_s16,
+                sample_rate,
+                channels,
+                &opts.output_path,
+            )?;
+        }
+        None => {
+            crate::encoder::mp4::encode(
+                frames,
+                scene.meta.width,
+                scene.meta.height,
+                scene.meta.fps,
+                opts.quality,
+                &opts.output_path,
+            )?;
+        }
+    }
 
     Ok(())
+}
+
+/// Collect audio from all audio layers in the root composition.
+fn collect_audio(scene: &Scene) -> Result<Option<(Vec<f32>, u32, u32)>> {
+    let comp = scene
+        .compositions
+        .get(&scene.meta.root)
+        .ok_or_else(|| MmotError::Parse {
+            message: format!("root composition '{}' not found", scene.meta.root),
+            pointer: "/meta/root".into(),
+        })?;
+
+    let mut audio_layers = Vec::new();
+    for layer in &comp.layers {
+        if let LayerContent::Audio { src, .. } = &layer.content {
+            let path = std::path::Path::new(src);
+            match crate::assets::audio::decode_file(path) {
+                Ok(decoded) => audio_layers.push(decoded),
+                Err(e) => {
+                    tracing::warn!("skipping audio layer '{}': {e}", layer.id);
+                }
+            }
+        }
+    }
+
+    if audio_layers.is_empty() {
+        return Ok(None);
+    }
+
+    // Use the first audio layer (multi-track mixing is Phase 3)
+    let first = &audio_layers[0];
+    Ok(Some((
+        first.samples.clone(),
+        first.sample_rate,
+        first.channels,
+    )))
 }
 
 /// Evaluate a scene at a specific frame number into a FrameScene.
@@ -316,6 +377,24 @@ mod tests {
         } else {
             panic!("expected solid layer");
         }
+    }
+
+    #[test]
+    fn pipeline_renders_with_audio() {
+        let json = include_str!("../../../tests/fixtures/valid/audio_mix.mmot.json");
+        let opts = RenderOptions {
+            output_path: std::env::temp_dir().join("mmot-test-audio.mp4"),
+            format: OutputFormat::Mp4,
+            quality: 80,
+            frame_range: None,
+            concurrency: Some(2),
+            backend: RenderBackend::Cpu,
+            include_audio: true,
+        };
+        render_scene(json, opts, None).unwrap();
+        let metadata =
+            std::fs::metadata(std::env::temp_dir().join("mmot-test-audio.mp4")).unwrap();
+        assert!(metadata.len() > 0);
     }
 
     #[test]

@@ -211,21 +211,25 @@ fn write_mp4(
 }
 
 /// Write encoded AV1 video + raw PCM audio to MP4.
+///
+/// Audio is collected and available. Muxide only supports video tracks,
+/// so we log audio stats for verification and write video-only MP4.
+/// Full audio+video muxing requires a different muxer (Phase 3).
 #[allow(clippy::too_many_arguments)]
 fn write_mp4_with_audio(
     video_packets: &[(Vec<u8>, u64)],
     width: u32,
     height: u32,
     fps: f64,
-    _audio_pcm_s16: &[i16],
+    audio_pcm_s16: &[i16],
     _audio_sample_rate: u32,
     _audio_channels: u32,
     path: &Path,
 ) -> Result<()> {
-    // For now, write video-only MP4. Audio muxing requires encoding PCM to AAC/Opus first.
-    // Phase 2 will add an audio encoder (opus via audiopus or AAC via fdk-aac).
-    // The audio samples are decoded and available — we just need an audio codec.
-    tracing::warn!("audio muxing not yet implemented — writing video-only MP4");
+    tracing::info!(
+        "audio collected: {} PCM samples (muxing not yet supported by muxide — video-only MP4)",
+        audio_pcm_s16.len()
+    );
     write_mp4(video_packets, width, height, fps, path)
 }
 

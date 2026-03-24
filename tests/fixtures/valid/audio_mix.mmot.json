@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "AudioMix",
+    "width": 64,
+    "height": 64,
+    "fps": 30,
+    "duration": 30,
+    "background": "#000000",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "bg",
+          "type": "solid",
+          "in": 0,
+          "out": 30,
+          "color": "#112233",
+          "transform": { "position": [32, 32], "scale": [1, 1], "opacity": 1.0, "rotation": 0.0 }
+        },
+        {
+          "id": "audio-track",
+          "type": "audio",
+          "in": 0,
+          "out": 30,
+          "src": "tests/fixtures/valid/silence.wav",
+          "volume": 1.0,
+          "transform": { "position": [0, 0], "scale": [1, 1], "opacity": 1.0, "rotation": 0.0 }
+        }
+      ]
+    }
+  }
+}
