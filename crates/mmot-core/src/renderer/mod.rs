@@ -168,4 +168,65 @@ mod tests {
         let has_green = rgba.chunks(4).any(|px| px[1] > 200 && px[0] < 50);
         assert!(has_green, "expected green pixels from shape");
     }
+
+    #[test]
+    fn shape_line_renders() {
+        let frame = FrameScene {
+            width: 100,
+            height: 100,
+            background: "#000000".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 50.0, y: 50.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Shape {
+                    shape: shape::ResolvedShape::Line {
+                        x1: 0.0,
+                        y1: 0.0,
+                        x2: 100.0,
+                        y2: 100.0,
+                        stroke_color: "#ffffff".into(),
+                        stroke_width: 2.0,
+                    },
+                },
+            }],
+        };
+        let rgba = render(&frame).unwrap();
+        let has_white =
+            rgba.chunks(4).any(|px| px[0] > 200 && px[1] > 200 && px[2] > 200);
+        assert!(has_white, "line should produce white pixels");
+    }
+
+    #[test]
+    fn shape_polygon_renders() {
+        let frame = FrameScene {
+            width: 100,
+            height: 100,
+            background: "#000000".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 50.0, y: 50.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Shape {
+                    shape: shape::ResolvedShape::Polygon {
+                        points: vec![[50.0, 10.0], [90.0, 90.0], [10.0, 90.0]],
+                        fill: Some("#00ff00".into()),
+                        stroke_color: None,
+                        stroke_width: 0.0,
+                    },
+                },
+            }],
+        };
+        let rgba = render(&frame).unwrap();
+        let has_green = rgba.chunks(4).any(|px| px[1] > 200 && px[0] < 50);
+        assert!(has_green, "polygon triangle should have green pixels");
+    }
 }

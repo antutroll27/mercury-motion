@@ -281,6 +281,30 @@ fn evaluate_composition(
                         stroke_color: stroke.as_ref().map(|s| s.color.clone()),
                         stroke_width: stroke.as_ref().map(|s| s.width).unwrap_or(0.0),
                     },
+                    ShapeSpec::Line {
+                        x1,
+                        y1,
+                        x2,
+                        y2,
+                        stroke,
+                    } => ResolvedShape::Line {
+                        x1: *x1,
+                        y1: *y1,
+                        x2: *x2,
+                        y2: *y2,
+                        stroke_color: stroke.color.clone(),
+                        stroke_width: stroke.width,
+                    },
+                    ShapeSpec::Polygon {
+                        points,
+                        fill,
+                        stroke,
+                    } => ResolvedShape::Polygon {
+                        points: points.clone(),
+                        fill: fill.clone(),
+                        stroke_color: stroke.as_ref().map(|s| s.color.clone()),
+                        stroke_width: stroke.as_ref().map(|s| s.width).unwrap_or(0.0),
+                    },
                 };
                 ResolvedContent::Shape { shape: resolved }
             }

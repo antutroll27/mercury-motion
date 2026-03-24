@@ -118,6 +118,18 @@ pub enum ShapeSpec {
         fill: Option<String>,
         stroke: Option<StrokeSpec>,
     },
+    Line {
+        x1: f64,
+        y1: f64,
+        x2: f64,
+        y2: f64,
+        stroke: StrokeSpec,
+    },
+    Polygon {
+        points: Vec<[f64; 2]>,
+        fill: Option<String>,
+        stroke: Option<StrokeSpec>,
+    },
 }
 
 /// Stroke specification.
