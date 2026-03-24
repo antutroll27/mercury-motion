@@ -77,7 +77,7 @@ pub fn decode_frame(path: &Path, timestamp_secs: f64) -> Result<DecodedVideoFram
             .map_err(|e| MmotError::VideoDecode(format!("send_packet failed: {e}")))?;
 
         let mut decoded = ffmpeg::frame::Video::empty();
-        while decoder.receive_frame(&mut decoded).is_ok() {
+        if decoder.receive_frame(&mut decoded).is_ok() {
             // Convert to RGBA
             scaler
                 .run(&decoded, &mut rgba_frame)
