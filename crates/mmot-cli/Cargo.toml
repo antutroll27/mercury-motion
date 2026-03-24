@@ -2,13 +2,20 @@
 name = "mmot"
 version = "0.1.0"
 edition = "2024"
+description = "CLI for Mercury-Motion — render .mmot.json files to MP4/WebM/GIF video"
+license = "MIT"
+repository = "https://github.com/antutroll27/mercury-motion"
+homepage = "https://github.com/antutroll27/mercury-motion"
+keywords = ["video", "cli", "motion-graphics", "rendering", "animation"]
+categories = ["command-line-utilities", "multimedia::video"]
+readme = "../../README.md"
 
 [[bin]]
 name = "mmot"
 path = "src/main.rs"
 
 [dependencies]
-mmot-core = { path = "../mmot-core" }
+mmot-core = { version = "0.1.0", path = "../mmot-core" }
 clap = { version = "4", features = ["derive"] }
 anyhow = { workspace = true }
 tracing = { workspace = true }
