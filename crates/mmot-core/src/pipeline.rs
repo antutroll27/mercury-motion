@@ -164,7 +164,20 @@ pub fn render_scene_with_props(
             )?;
         }
         OutputFormat::Webm => {
-            return Err(MmotError::Encoder("WebM output not yet implemented".into()));
+            let encoded = crate::encoder::av1::encode_av1(
+                &frames,
+                scene.meta.width,
+                scene.meta.height,
+                scene.meta.fps,
+                opts.quality,
+            )?;
+            crate::encoder::ffmpeg_mux::mux_webm(
+                &encoded,
+                scene.meta.width,
+                scene.meta.height,
+                scene.meta.fps,
+                &opts.output_path,
+            )?;
         }
     }
 

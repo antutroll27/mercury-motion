@@ -102,9 +102,8 @@ fn write_mp4(
 
 /// Write encoded AV1 video + raw PCM audio to MP4.
 ///
-/// Audio is collected and available. Muxide only supports video tracks,
-/// so we log audio stats for verification and write video-only MP4.
-/// Full audio+video muxing requires a different muxer (Phase 3).
+/// Tries ffmpeg-based muxing first (which supports audio tracks).
+/// Falls back to video-only MP4 via muxide if ffmpeg is unavailable.
 #[allow(clippy::too_many_arguments)]
 fn write_mp4_with_audio(
     video_packets: &[(Vec<u8>, u64)],
@@ -112,15 +111,26 @@ fn write_mp4_with_audio(
     height: u32,
     fps: f64,
     audio_pcm_s16: &[i16],
-    _audio_sample_rate: u32,
-    _audio_channels: u32,
+    audio_sample_rate: u32,
+    audio_channels: u32,
     path: &Path,
 ) -> Result<()> {
-    tracing::info!(
-        "audio collected: {} PCM samples (muxing not yet supported by muxide — video-only MP4)",
-        audio_pcm_s16.len()
-    );
-    write_mp4(video_packets, width, height, fps, path)
+    match crate::encoder::ffmpeg_mux::mux_mp4_with_audio(
+        video_packets,
+        width,
+        height,
+        fps,
+        audio_pcm_s16,
+        audio_sample_rate,
+        audio_channels,
+        path,
+    ) {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            tracing::warn!("ffmpeg audio muxing unavailable ({e}), writing video-only MP4");
+            write_mp4(video_packets, width, height, fps, path)
+        }
+    }
 }
 
 /// Extract the AV1 Sequence Header OBU from a rav1e packet.
