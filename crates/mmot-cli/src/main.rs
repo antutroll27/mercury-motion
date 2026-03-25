@@ -1,4 +1,5 @@
 mod completer;
+mod repl;
 mod ui;
 
 use std::collections::HashMap;
@@ -43,6 +44,8 @@ enum Commands {
     },
     /// Validate a .mmot.json file without rendering
     Validate { file: PathBuf },
+    /// Enter interactive REPL mode
+    Interactive,
 }
 
 fn parse_prop(s: &str) -> std::result::Result<(String, String), String> {
@@ -52,8 +55,93 @@ fn parse_prop(s: &str) -> std::result::Result<(String, String), String> {
     Ok((s[..pos].to_string(), s[pos + 1..].to_string()))
 }
 
+/// Print styled help listing all REPL commands.
+pub fn run_help() {
+    ui::print_section("Commands");
+    eprintln!(
+        "  {:<20} {}",
+        ui::gold("render <file>"),
+        ui::slate("Render a .mmot.json file to video")
+    );
+    eprintln!(
+        "  {:<20} {}",
+        ui::gold("validate <file>"),
+        ui::slate("Validate a .mmot.json file without rendering")
+    );
+    eprintln!(
+        "  {:<20} {}",
+        ui::gold("scan"),
+        ui::slate("Scan current directory for .mmot.json files")
+    );
+    eprintln!(
+        "  {:<20} {}",
+        ui::gold("clear"),
+        ui::slate("Clear the terminal screen")
+    );
+    eprintln!(
+        "  {:<20} {}",
+        ui::gold("help"),
+        ui::slate("Show this help message")
+    );
+    eprintln!(
+        "  {:<20} {}",
+        ui::gold("quit / exit"),
+        ui::slate("Exit the REPL")
+    );
+    eprintln!();
+    ui::print_section("Render Flags");
+    eprintln!(
+        "  {:<20} {}",
+        ui::gold("-o, --output"),
+        ui::slate("Output file path (default: output.mp4)")
+    );
+    eprintln!(
+        "  {:<20} {}",
+        ui::gold("-f, --format"),
+        ui::slate("Output format: mp4, gif, webm")
+    );
+    eprintln!(
+        "  {:<20} {}",
+        ui::gold("-q, --quality"),
+        ui::slate("Encode quality 0-100 (default: 80)")
+    );
+    eprintln!(
+        "  {:<20} {}",
+        ui::gold("--prop key=val"),
+        ui::slate("Set a template prop (repeatable)")
+    );
+    eprintln!(
+        "  {:<20} {}",
+        ui::gold("--include-audio"),
+        ui::slate("Include audio tracks in output")
+    );
+    eprintln!(
+        "  {:<20} {}",
+        ui::gold("--concurrency N"),
+        ui::slate("Number of parallel render threads")
+    );
+    eprintln!(
+        "  {:<20} {}",
+        ui::gold("-v, --verbose"),
+        ui::slate("Show detailed scene info during render")
+    );
+    eprintln!();
+}
+
 fn main() {
     tracing_subscriber::fmt::init();
+
+    // Intercept bare `mmot` (no args) and `mmot interactive` before clap parsing
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() <= 1 {
+        repl::run_repl();
+        std::process::exit(0);
+    }
+    if args.len() == 2 && args[1] == "interactive" {
+        repl::run_repl();
+        std::process::exit(0);
+    }
+
     let cli = Cli::parse();
     let exit_code = match run(cli) {
         Ok(()) => 0,
@@ -76,6 +164,10 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 .with_context(|| format!("cannot read {}", file.display()))?;
             mmot_core::parser::parse(&json)?;
             println!("valid: {}", file.display());
+            Ok(())
+        }
+        Commands::Interactive => {
+            repl::run_repl();
             Ok(())
         }
         Commands::Render {
