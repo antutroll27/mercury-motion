@@ -2,12 +2,12 @@ use skia_safe::Canvas;
 
 use crate::renderer::{ResolvedContent, ResolvedLayer};
 
-use super::{gradient, image as img_renderer, shape, solid, text};
+use super::{blend, gradient, image as img_renderer, shape, solid, text};
 
 /// Draw a single resolved layer onto the canvas.
 pub fn draw_layer(canvas: &Canvas, layer: &ResolvedLayer, width: u32, height: u32) {
     canvas.save();
-    let paint = if layer.fill_parent {
+    let mut paint = if layer.fill_parent {
         // AbsoluteFill: skip transform, render at (0,0) filling the full canvas.
         let mut paint = skia_safe::Paint::default();
         paint.set_alpha_f(layer.opacity as f32);
@@ -15,6 +15,9 @@ pub fn draw_layer(canvas: &Canvas, layer: &ResolvedLayer, width: u32, height: u3
     } else {
         apply_transform(canvas, layer)
     };
+    if let Some(ref mode) = layer.blend_mode {
+        paint.set_blend_mode(blend::to_skia_blend_mode(mode));
+    }
     match &layer.content {
         ResolvedContent::Solid { color } => solid::draw(canvas, color, width, height, &paint),
         ResolvedContent::Image {

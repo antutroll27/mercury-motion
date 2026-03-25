@@ -496,6 +496,7 @@ fn evaluate_composition(
             transform,
             content,
             fill_parent: layer.fill.as_ref().is_some_and(|f| matches!(f, crate::schema::composition::FillMode::Parent)),
+            blend_mode: layer.blend_mode.clone(),
         });
     }
 

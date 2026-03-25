@@ -1,3 +1,4 @@
+pub mod blend;
 mod gradient;
 mod image;
 pub mod layers;
@@ -26,6 +27,8 @@ pub struct ResolvedLayer {
     pub content: ResolvedContent,
     /// When `true`, the layer fills the entire canvas (AbsoluteFill).
     pub fill_parent: bool,
+    /// Optional compositing blend mode for this layer.
+    pub blend_mode: Option<crate::schema::effects::BlendMode>,
 }
 
 /// Resolved transform values (no keyframes).
@@ -128,6 +131,7 @@ mod tests {
                     color: color.into(),
                 },
                 fill_parent: false,
+                blend_mode: None,
             }],
         }
     }
@@ -175,6 +179,7 @@ mod tests {
                     },
                 },
                 fill_parent: false,
+                blend_mode: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -209,6 +214,7 @@ mod tests {
                     },
                 },
                 fill_parent: false,
+                blend_mode: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -240,6 +246,7 @@ mod tests {
                     },
                 },
                 fill_parent: false,
+                blend_mode: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -281,6 +288,7 @@ mod tests {
                     height: 100,
                 },
                 fill_parent: false,
+                blend_mode: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -321,6 +329,7 @@ mod tests {
                     height: 100,
                 },
                 fill_parent: false,
+                blend_mode: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -345,10 +354,62 @@ mod tests {
                     color: "#ff0000".into(),
                 },
                 fill_parent: true,
+                blend_mode: None,
             }],
         };
         let rgba = render(&frame).unwrap();
         // Every pixel should be red (layer fills entire canvas)
         assert!(rgba.chunks(4).all(|px| px[0] == 255 && px[1] == 0 && px[2] == 0));
+    }
+
+    #[test]
+    fn blend_mode_multiply_changes_output() {
+        use crate::schema::effects::BlendMode;
+        // Red layer on white background with Normal blend
+        let normal_frame = FrameScene {
+            width: 4,
+            height: 4,
+            background: "#ffffff".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 2.0, y: 2.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Solid {
+                    color: "#ff0000".into(),
+                },
+                fill_parent: true,
+                blend_mode: None,
+            }],
+        };
+        // Red layer on gray background with Multiply blend
+        let multiply_frame = FrameScene {
+            width: 4,
+            height: 4,
+            background: "#808080".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 2.0, y: 2.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Solid {
+                    color: "#ff0000".into(),
+                },
+                fill_parent: true,
+                blend_mode: Some(BlendMode::Multiply),
+            }],
+        };
+        let normal_rgba = render(&normal_frame).unwrap();
+        let multiply_rgba = render(&multiply_frame).unwrap();
+        // Multiply of red on gray should produce darker red than normal
+        // Normal: red layer replaces gray -> pure red (255,0,0)
+        // Multiply: red * gray -> (128,0,0) approximately
+        assert_ne!(normal_rgba, multiply_rgba);
     }
 }
