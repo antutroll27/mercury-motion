@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/mmot-core", "crates/mmot-cli"]
+members = ["crates/mmot-core", "crates/mmot-cli", "editor/src-tauri"]
 resolver = "2"
 
 [workspace.dependencies]
