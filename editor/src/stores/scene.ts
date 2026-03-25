@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { renderFrame } from '../lib/tauri-commands'
 
 export interface Layer {
   id: string
@@ -59,6 +60,7 @@ export const useSceneStore = defineStore('scene', () => {
   const selectedLayerId = ref<string | null>(null)
   const isPlaying = ref(false)
   const previewImage = ref<string | null>(null)
+  const dirty = ref(false)
 
   const rootComposition = computed(() => scene.value.compositions[scene.value.meta.root])
   const layers = computed(() => rootComposition.value?.layers ?? [])
@@ -81,16 +83,74 @@ export const useSceneStore = defineStore('scene', () => {
 
   function fromJson(json: string) {
     scene.value = JSON.parse(json)
+    dirty.value = true
+    schedulePreview()
   }
+
+  // --- Preview rendering ---
+
+  async function requestPreview() {
+    try {
+      const json = toJson()
+      const dataUrl = await renderFrame(json, currentFrame.value)
+      previewImage.value = dataUrl
+      dirty.value = false
+    } catch (e) {
+      console.error('Preview render failed:', e)
+    }
+  }
+
+  let previewTimeout: ReturnType<typeof setTimeout> | null = null
+
+  function schedulePreview() {
+    dirty.value = true
+    if (previewTimeout) clearTimeout(previewTimeout)
+    previewTimeout = setTimeout(() => requestPreview(), 300)
+  }
+
+  // --- Playback ---
+
+  let playInterval: ReturnType<typeof setInterval> | null = null
+
+  function play() {
+    if (isPlaying.value) return
+    isPlaying.value = true
+    const fps = scene.value.meta.fps
+    playInterval = setInterval(() => {
+      if (currentFrame.value >= totalFrames.value - 1) {
+        currentFrame.value = 0 // loop
+      } else {
+        currentFrame.value++
+      }
+      requestPreview()
+    }, 1000 / fps)
+  }
+
+  function pause() {
+    isPlaying.value = false
+    if (playInterval) {
+      clearInterval(playInterval)
+      playInterval = null
+    }
+  }
+
+  function togglePlayback() {
+    if (isPlaying.value) pause()
+    else play()
+  }
+
+  // --- Scene mutations ---
 
   function addLayer(layer: Layer) {
     rootComposition.value.layers.push(layer)
+    schedulePreview()
   }
 
   function removeLayer(id: string) {
     const comp = rootComposition.value
     comp.layers = comp.layers.filter(l => l.id !== id)
     if (selectedLayerId.value === id) selectedLayerId.value = null
+    schedulePreview()
   }
 
   function selectLayer(id: string | null) {
@@ -99,6 +159,7 @@ export const useSceneStore = defineStore('scene', () => {
 
   function setFrame(frame: number) {
     currentFrame.value = Math.max(0, Math.min(frame, totalFrames.value - 1))
+    schedulePreview()
   }
 
   function updateLayerProperty(layerId: string, path: string, value: any) {
@@ -110,11 +171,41 @@ export const useSceneStore = defineStore('scene', () => {
       obj = obj[keys[i]]
     }
     obj[keys[keys.length - 1]] = value
+    schedulePreview()
+  }
+
+  // --- File I/O ---
+
+  async function saveToFile(path: string) {
+    try {
+      // Use Tauri invoke directly to avoid requiring @tauri-apps/plugin-fs
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('plugin:fs|write_text_file', { path, contents: toJson() })
+    } catch (e) {
+      console.error('Save failed:', e)
+      throw e
+    }
+  }
+
+  async function loadFromFile(path: string) {
+    try {
+      // Use Tauri invoke directly to avoid requiring @tauri-apps/plugin-fs
+      const { invoke } = await import('@tauri-apps/api/core')
+      const json = await invoke<string>('plugin:fs|read_text_file', { path })
+      fromJson(json)
+    } catch (e) {
+      console.error('Load failed:', e)
+      throw e
+    }
   }
 
   return {
-    scene, currentFrame, selectedLayerId, isPlaying, previewImage,
+    scene, currentFrame, selectedLayerId, isPlaying, previewImage, dirty,
     rootComposition, layers, selectedLayer, totalFrames, currentTimecode,
-    toJson, fromJson, addLayer, removeLayer, selectLayer, setFrame, updateLayerProperty,
+    toJson, fromJson,
+    requestPreview, schedulePreview,
+    play, pause, togglePlayback,
+    addLayer, removeLayer, selectLayer, setFrame, updateLayerProperty,
+    saveToFile, loadFromFile,
   }
 })

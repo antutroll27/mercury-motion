@@ -68,7 +68,7 @@ const ticks = computed(() => {
       </button>
       <button
         class="w-8 h-8 flex items-center justify-center rounded-full border border-cosmos-border hover:border-crimson hover:text-crimson transition-colors"
-        @click="store.isPlaying = !store.isPlaying"
+        @click="store.togglePlayback()"
       >
         <span class="text-sm">{{ store.isPlaying ? '\u23F8' : '\u25B6' }}</span>
       </button>

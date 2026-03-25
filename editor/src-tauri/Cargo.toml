@@ -12,7 +12,7 @@ name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.5.6" }
+tauri-build = { version = "2.5.6", features = [] }
 
 [dependencies]
 serde_json = { workspace = true }
@@ -21,6 +21,8 @@ schemars = { workspace = true }
 image = { version = "0.25", default-features = false, features = ["png"] }
 log = "0.4"
 base64 = "0.22"
-tauri = { version = "2.10.3" }
+tauri = { version = "2.10.3", features = [] }
 tauri-plugin-log = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
 mmot-core = { path = "../../crates/mmot-core" }

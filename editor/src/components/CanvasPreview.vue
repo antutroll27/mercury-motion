@@ -1,23 +1,15 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useSceneStore } from '../stores/scene'
 
 const store = useSceneStore()
-const canvasRef = ref<HTMLCanvasElement | null>(null)
 
-// In Tauri, this would call render_frame IPC
-// For now, show a placeholder with scene dimensions
-watch(() => store.previewImage, (img) => {
-  if (!img || !canvasRef.value) return
-  const canvas = canvasRef.value
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-  const image = new Image()
-  image.onload = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
-  }
-  image.src = img
+onMounted(() => {
+  store.requestPreview()
+})
+
+watch(() => store.currentFrame, () => {
+  store.requestPreview()
 })
 </script>
 
@@ -31,16 +23,11 @@ watch(() => store.previewImage, (img) => {
     <!-- Canvas Container -->
     <div class="relative bg-black rounded border border-cosmos-border shadow-2xl overflow-hidden"
          :style="{ aspectRatio: `${store.scene.meta.width}/${store.scene.meta.height}`, maxWidth: '100%', maxHeight: 'calc(100% - 40px)' }">
-      <canvas
-        ref="canvasRef"
-        :width="store.scene.meta.width"
-        :height="store.scene.meta.height"
-        class="w-full h-full object-contain"
-      />
+      <!-- Rendered Preview -->
+      <img v-if="store.previewImage" :src="store.previewImage" class="w-full h-full object-contain" />
 
       <!-- Empty State -->
-      <div v-if="!store.previewImage"
-           class="absolute inset-0 flex flex-col items-center justify-center gap-2">
+      <div v-else class="absolute inset-0 flex flex-col items-center justify-center gap-2">
         <div class="w-16 h-16 border border-cosmos-border rounded-full flex items-center justify-center">
           <div class="w-6 h-6 border-2 border-text-muted rounded-sm rotate-45"></div>
         </div>
