@@ -89,6 +89,56 @@ mmot validate scene.mmot.json
 mmot render scene.mmot.json --quality 90 --concurrency 8 --verbose
 ```
 
+## After Effects Features
+
+Mercury-Motion supports core After Effects compositing features:
+
+- **Blend Modes:** Normal, Multiply, Screen, Overlay, Darken, Lighten, ColorDodge, ColorBurn, HardLight, SoftLight, Difference, Exclusion, Add
+- **Layer Parenting:** Child layers inherit parent transforms. Use Null layers for grouping.
+- **Masks:** Rect, Ellipse, and freeform Path masks with feathering
+- **Effects:** Gaussian Blur, Drop Shadow, Glow, Brightness/Contrast, Hue/Saturation, Invert, Tint, Fill
+- **Adjustment Layers:** Apply effects to all layers below
+- **Motion Blur:** 5-sample temporal averaging for moving layers
+- **Time Remapping:** Speed up, slow down, or reverse layer playback
+- **Trim Paths:** Animate stroke drawing on shapes
+- **Path Animation:** Move layers along bezier paths with auto-orient
+
+## Use with AI (Claude Code, Codex, Gemini)
+
+Mercury-Motion works as an AI-native video tool. Instead of a GUI, describe what you want and the AI creates it.
+
+### MCP Server (Claude Code)
+
+Add to your `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "mmot": {
+      "command": "npx",
+      "args": ["-y", "mmot-mcp"]
+    }
+  }
+}
+```
+
+Then tell Claude: *"Create a 5-second animation with a red circle moving left to right with a drop shadow and motion blur"*
+
+### Skill File (Any AI Tool)
+
+Copy `skills/mercury-motion/SKILL.md` into your AI tool's system prompt. Works with Claude Code, Codex, Gemini CLI, or any LLM.
+
+### JSON Schema
+
+Full JSON Schema at `schema/mmot.schema.json` for IDE autocomplete and validation.
+
+### npm
+
+```bash
+npm install mercury-motion
+npx mmot render scene.mmot.json --output video.mp4
+```
+
 ## As a Library
 
 ```rust
