@@ -153,6 +153,15 @@ export const useSceneStore = defineStore('scene', () => {
     schedulePreview()
   }
 
+  function reorderLayer(fromIndex: number, toIndex: number) {
+    const comp = rootComposition.value
+    if (fromIndex < 0 || fromIndex >= comp.layers.length) return
+    if (toIndex < 0 || toIndex >= comp.layers.length) return
+    const [moved] = comp.layers.splice(fromIndex, 1)
+    comp.layers.splice(toIndex, 0, moved)
+    schedulePreview()
+  }
+
   function selectLayer(id: string | null) {
     selectedLayerId.value = id
   }
@@ -205,7 +214,7 @@ export const useSceneStore = defineStore('scene', () => {
     toJson, fromJson,
     requestPreview, schedulePreview,
     play, pause, togglePlayback,
-    addLayer, removeLayer, selectLayer, setFrame, updateLayerProperty,
+    addLayer, removeLayer, reorderLayer, selectLayer, setFrame, updateLayerProperty,
     saveToFile, loadFromFile,
   }
 })
