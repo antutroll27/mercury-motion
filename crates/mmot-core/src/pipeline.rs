@@ -43,6 +43,75 @@ pub enum RenderBackend {
 /// Progress callback: called with (current_frame, total_frames).
 pub type ProgressFn = Arc<dyn Fn(u64, u64) + Send + Sync>;
 
+/// Scene metadata returned by `get_scene_info`.
+#[derive(Debug, Clone)]
+pub struct SceneInfo {
+    pub width: u32,
+    pub height: u32,
+    pub fps: f64,
+    pub duration_frames: u64,
+    pub duration_secs: f64,
+    pub composition_count: usize,
+    pub root_layer_count: usize,
+}
+
+/// Get metadata about a scene without rendering.
+pub fn get_scene_info(json: &str) -> Result<SceneInfo> {
+    let scene = parse(json)?;
+    let root_layers = scene
+        .compositions
+        .get(&scene.meta.root)
+        .map(|c| c.layers.len())
+        .unwrap_or(0);
+    Ok(SceneInfo {
+        width: scene.meta.width,
+        height: scene.meta.height,
+        fps: scene.meta.fps,
+        duration_frames: scene.meta.duration,
+        duration_secs: scene.meta.duration as f64 / scene.meta.fps,
+        composition_count: scene.compositions.len(),
+        root_layer_count: root_layers,
+    })
+}
+
+/// Render a single frame from a JSON scene as raw RGBA bytes.
+///
+/// Returns `(width, height, rgba_bytes)`. Use this for live preview in a UI
+/// — it skips encoding entirely and just returns the pixel buffer.
+pub fn render_single_frame(
+    json: &str,
+    frame_number: u64,
+) -> Result<(u32, u32, Vec<u8>)> {
+    render_single_frame_with_props(json, &HashMap::new(), frame_number)
+}
+
+/// Render a single frame with props substitution.
+pub fn render_single_frame_with_props(
+    json: &str,
+    cli_props: &HashMap<String, String>,
+    frame_number: u64,
+) -> Result<(u32, u32, Vec<u8>)> {
+    let json = props::substitute(json, cli_props);
+    let scene = parse(&json)?;
+
+    let font_cache: HashMap<String, Vec<u8>> = {
+        let mut cache = HashMap::new();
+        for font_asset in &scene.assets.fonts {
+            match crate::assets::font::load_font(Path::new(&font_asset.src)) {
+                Ok(data) => { cache.insert(font_asset.id.clone(), data); }
+                Err(e) => { tracing::warn!("failed to load font '{}': {e}", font_asset.id); }
+            }
+        }
+        cache
+    };
+
+    let frame_scene = evaluate_scene(&scene, frame_number, &font_cache)?;
+    let w = frame_scene.width;
+    let h = frame_scene.height;
+    let rgba = render_frame(&frame_scene)?;
+    Ok((w, h, rgba))
+}
+
 /// Main entry point: parse JSON, render all frames, encode to MP4.
 pub fn render_scene(
     json: &str,
@@ -1466,5 +1535,57 @@ mod tests {
                 .any(|px| px[0] > 10 || px[1] > 10 || px[2] > 10);
             assert!(has_color, "frame {frame} is all black — nothing rendered");
         }
+    }
+
+    #[test]
+    fn render_single_frame_returns_rgba() {
+        let json = include_str!("../../../tests/fixtures/valid/minimal.mmot.json");
+        let (w, h, rgba) = render_single_frame(json, 0).unwrap();
+        assert!(w > 0);
+        assert!(h > 0);
+        assert_eq!(rgba.len(), (w * h * 4) as usize);
+    }
+
+    #[test]
+    fn render_single_frame_different_frames_differ() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": { "name": "test", "width": 64, "height": 64, "fps": 30, "duration": 30, "root": "main", "background": "#000000" },
+            "compositions": {
+                "main": {
+                    "layers": [{
+                        "id": "fader",
+                        "in": 0, "out": 30,
+                        "transform": {
+                            "position": [32, 32],
+                            "opacity": [
+                                { "t": 0, "v": 0.0 },
+                                { "t": 29, "v": 1.0 }
+                            ]
+                        },
+                        "type": "solid",
+                        "color": "#ffffff",
+                        "fill": "parent"
+                    }]
+                }
+            },
+            "assets": { "fonts": [] }
+        }"##;
+        let (_, _, rgba0) = render_single_frame(json, 0).unwrap();
+        let (_, _, rgba20) = render_single_frame(json, 20).unwrap();
+        assert_ne!(rgba0, rgba20, "different frames should produce different pixels");
+    }
+
+    #[test]
+    fn get_scene_info_returns_metadata() {
+        let json = include_str!("../../../tests/fixtures/valid/minimal.mmot.json");
+        let info = get_scene_info(json).unwrap();
+        assert!(info.width > 0);
+        assert!(info.height > 0);
+        assert!(info.fps > 0.0);
+        assert!(info.duration_frames > 0);
+        assert!(info.duration_secs > 0.0);
+        assert!(info.composition_count > 0);
+        assert!(info.root_layer_count > 0);
     }
 }
