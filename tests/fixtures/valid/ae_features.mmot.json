@@ -1,0 +1,127 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "AEFeatures",
+    "width": 640,
+    "height": 360,
+    "fps": 30,
+    "duration": 60,
+    "root": "main",
+    "background": "#1a1a2e"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "null_parent",
+          "in": 0,
+          "out": 60,
+          "transform": {
+            "position": [
+              { "t": 0, "v": [320, 180] },
+              { "t": 60, "v": [400, 200] }
+            ]
+          },
+          "type": "null"
+        },
+        {
+          "id": "bg_gradient",
+          "in": 0,
+          "out": 60,
+          "transform": { "position": [320, 180] },
+          "type": "gradient",
+          "gradient": {
+            "gradient_type": "radial",
+            "center": [0.5, 0.5],
+            "radius": 0.8,
+            "colors": [
+              { "offset": 0.0, "color": "#16213e" },
+              { "offset": 1.0, "color": "#0f3460" }
+            ]
+          },
+          "fill": "parent",
+          "blend_mode": "screen"
+        },
+        {
+          "id": "masked_circle",
+          "in": 0,
+          "out": 60,
+          "transform": { "position": [200, 180], "scale": [1, 1] },
+          "type": "solid",
+          "color": "#e94560",
+          "fill": "parent",
+          "masks": [
+            {
+              "path": { "type": "ellipse", "cx": 320, "cy": 180, "rx": 100, "ry": 100 },
+              "mode": "add",
+              "feather": 5.0
+            }
+          ],
+          "effects": [
+            { "type": "drop_shadow", "color": "#000000", "offset_x": 4, "offset_y": 4, "blur": 8.0, "opacity": 0.6 }
+          ]
+        },
+        {
+          "id": "moving_box",
+          "in": 0,
+          "out": 60,
+          "transform": {
+            "position": [100, 100]
+          },
+          "type": "shape",
+          "shape": {
+            "shape_type": "rect",
+            "width": 80,
+            "height": 80,
+            "corner_radius": 10,
+            "fill": "#533483"
+          },
+          "parent": "null_parent",
+          "blend_mode": "overlay",
+          "motion_blur": true,
+          "path_animation": {
+            "points": [[100, 100], [540, 100], [540, 260], [100, 260]],
+            "auto_orient": true
+          }
+        },
+        {
+          "id": "fast_layer",
+          "in": 0,
+          "out": 60,
+          "transform": {
+            "position": [
+              { "t": 0, "v": [0, 300] },
+              { "t": 60, "v": [640, 300] }
+            ]
+          },
+          "type": "shape",
+          "shape": {
+            "shape_type": "ellipse",
+            "width": 30,
+            "height": 30,
+            "fill": "#e94560"
+          },
+          "time_remap": { "speed": 2.0 },
+          "effects": [
+            { "type": "glow", "color": "#e94560", "radius": 15, "intensity": 0.8 }
+          ]
+        },
+        {
+          "id": "adjustment",
+          "in": 0,
+          "out": 60,
+          "transform": { "position": [0, 0] },
+          "type": "solid",
+          "color": "#000000",
+          "adjustment": true,
+          "effects": [
+            { "type": "brightness_contrast", "brightness": 5, "contrast": 10 }
+          ]
+        }
+      ]
+    }
+  },
+  "assets": {
+    "fonts": []
+  }
+}

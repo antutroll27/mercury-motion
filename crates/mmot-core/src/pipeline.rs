@@ -1444,4 +1444,27 @@ mod tests {
         assert!((x - 50.0).abs() < 0.01);
         assert!((y - 50.0).abs() < 0.01);
     }
+
+    #[test]
+    fn ae_features_render_without_crash() {
+        let json =
+            std::fs::read_to_string("../../tests/fixtures/valid/ae_features.mmot.json").unwrap();
+        let scene = crate::parser::parse(&json).unwrap();
+        let font_cache = std::collections::HashMap::new();
+        // Render 5 frames spread across the timeline
+        for frame in [0, 10, 29, 30, 59] {
+            let frame_scene = evaluate_scene(&scene, frame, &font_cache).unwrap();
+            let rgba = crate::renderer::render(&frame_scene).unwrap();
+            assert_eq!(
+                rgba.len(),
+                (640 * 360 * 4) as usize,
+                "frame {frame} wrong size"
+            );
+            // Verify not all black (something rendered)
+            let has_color = rgba
+                .chunks(4)
+                .any(|px| px[0] > 10 || px[1] > 10 || px[2] > 10);
+            assert!(has_color, "frame {frame} is all black — nothing rendered");
+        }
+    }
 }
