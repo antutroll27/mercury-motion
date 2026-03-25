@@ -12,7 +12,7 @@ use crate::renderer::shape::ResolvedShape;
 use crate::renderer::{
     render as render_frame, FrameScene, ResolvedContent, ResolvedLayer, ResolvedTransform,
 };
-use crate::schema::{Layer, LayerContent, Scene, ShapeSpec, TransitionSpec};
+use crate::schema::{Layer, LayerContent, Scene, ShapeSpec, TransitionSpec, Vec2};
 
 /// Options for the render pipeline.
 pub struct RenderOptions {
@@ -265,6 +265,52 @@ fn compute_sequence_timing<'a>(
     result
 }
 
+/// Walk the parent chain and concatenate transforms.
+/// Guards against circular parenting with a max depth of 32.
+fn resolve_parent_chain(
+    layer_id: &str,
+    transforms: &HashMap<String, (ResolvedTransform, Option<String>)>,
+    depth: u32,
+) -> ResolvedTransform {
+    if depth > 32 {
+        return ResolvedTransform {
+            position: Vec2 { x: 0.0, y: 0.0 },
+            scale: Vec2 { x: 1.0, y: 1.0 },
+            rotation: 0.0,
+            opacity: 1.0,
+        };
+    }
+    let (transform, parent) = match transforms.get(layer_id) {
+        Some(data) => (&data.0, &data.1),
+        None => {
+            return ResolvedTransform {
+                position: Vec2 { x: 0.0, y: 0.0 },
+                scale: Vec2 { x: 1.0, y: 1.0 },
+                rotation: 0.0,
+                opacity: 1.0,
+            };
+        }
+    };
+    match parent {
+        None => transform.clone(),
+        Some(pid) => {
+            let parent_t = resolve_parent_chain(pid, transforms, depth + 1);
+            ResolvedTransform {
+                position: Vec2 {
+                    x: transform.position.x + parent_t.position.x,
+                    y: transform.position.y + parent_t.position.y,
+                },
+                scale: Vec2 {
+                    x: transform.scale.x * parent_t.scale.x,
+                    y: transform.scale.y * parent_t.scale.y,
+                },
+                rotation: transform.rotation + parent_t.rotation,
+                opacity: transform.opacity * parent_t.opacity,
+            }
+        }
+    }
+}
+
 /// Recursively evaluate a composition, resolving precomp references.
 fn evaluate_composition(
     scene: &Scene,
@@ -296,16 +342,32 @@ fn evaluate_composition(
         comp.layers.iter().map(|l| (l, l.in_point, l.out_point)).collect()
     };
 
-    let mut resolved_layers = Vec::new();
+    // ── Pass 1: Compute raw transforms for ALL active layers (including Null) ──
+    // This is needed so parent transforms can be looked up by child layers.
+    let mut transform_map: HashMap<String, (ResolvedTransform, Option<String>)> =
+        HashMap::new();
+
     for (i, (layer, eff_in, eff_out)) in timed_layers.iter().enumerate() {
         if frame < *eff_in || frame >= *eff_out {
             continue;
         }
 
-        let position = evaluate_vec2(&layer.transform.position, frame);
-        let scale = evaluate_vec2(&layer.transform.scale, frame);
-        let mut opacity = evaluate_f64(&layer.transform.opacity, frame);
-        let rotation = evaluate_f64(&layer.transform.rotation, frame);
+        // Compute effective frame with time remapping
+        let effective_frame = match &layer.time_remap {
+            Some(tr) => {
+                let duration = (layer.out_point - layer.in_point) as f64;
+                let local_frame = (frame - *eff_in) as f64;
+                let f = local_frame * tr.speed + tr.offset;
+                let f = if tr.reverse { duration - f } else { f };
+                f.clamp(0.0, duration - 1.0) as u64 + layer.in_point
+            }
+            None => frame,
+        };
+
+        let position = evaluate_vec2(&layer.transform.position, effective_frame);
+        let scale = evaluate_vec2(&layer.transform.scale, effective_frame);
+        let mut opacity = evaluate_f64(&layer.transform.opacity, effective_frame);
+        let rotation = evaluate_f64(&layer.transform.rotation, effective_frame);
 
         // Apply transition opacity for overlapping layers in sequence mode
         if comp.sequence
@@ -360,6 +422,23 @@ fn evaluate_composition(
             rotation,
             opacity,
         };
+
+        transform_map.insert(
+            layer.id.clone(),
+            (transform, layer.parent.clone()),
+        );
+    }
+
+    // ── Pass 2: Resolve parent chains and build final layers ──
+    let mut resolved_layers = Vec::new();
+    for (layer, eff_in, eff_out) in timed_layers.iter() {
+        if frame < *eff_in || frame >= *eff_out {
+            continue;
+        }
+
+        // Resolve the transform with parent chain
+        let transform = resolve_parent_chain(&layer.id, &transform_map, 0);
+        let opacity = transform.opacity;
 
         let content = match &layer.content {
             LayerContent::Solid { color } => ResolvedContent::Solid {
@@ -822,5 +901,192 @@ mod tests {
         let fs = evaluate_scene(&scene, 0, &font_cache).unwrap();
         assert_eq!(fs.layers.len(), 1);
         assert!(fs.layers[0].fill_parent);
+    }
+
+    #[test]
+    fn time_remap_double_speed() {
+        // Create a scene with a layer that has time_remap speed=2.0
+        // At frame 5, keyframes should evaluate as if at frame 10
+        let json = r##"{
+            "version": "1.0",
+            "meta": { "name": "T", "width": 64, "height": 64, "fps": 30, "duration": 30, "root": "main", "background": "#000000" },
+            "compositions": {
+                "main": {
+                    "layers": [{
+                        "id": "fast",
+                        "in": 0, "out": 30,
+                        "transform": {
+                            "position": [
+                                { "t": 0, "v": [0, 0] },
+                                { "t": 30, "v": [100, 0] }
+                            ]
+                        },
+                        "type": "solid",
+                        "color": "#ff0000",
+                        "time_remap": { "speed": 2.0 }
+                    }]
+                }
+            },
+            "assets": { "fonts": [] }
+        }"##;
+        let scene = crate::parser::parse(json).unwrap();
+        let font_cache = std::collections::HashMap::new();
+        // At frame 5 with 2x speed, position should be further than normal
+        let fs = evaluate_scene(&scene, 5, &font_cache).unwrap();
+        assert!(!fs.layers.is_empty());
+        let pos_x = fs.layers[0].transform.position.x;
+        // At 2x speed, frame 5 evaluates as frame 10 — position ~33.3
+        assert!(pos_x > 20.0, "expected position > 20 with 2x speed, got {pos_x}");
+    }
+
+    #[test]
+    fn parent_transform_offsets_child() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": { "name": "T", "width": 64, "height": 64, "fps": 30, "duration": 30, "root": "main", "background": "#000000" },
+            "compositions": {
+                "main": {
+                    "layers": [
+                        {
+                            "id": "parent_null",
+                            "in": 0, "out": 30,
+                            "transform": { "position": [100, 100] },
+                            "type": "null"
+                        },
+                        {
+                            "id": "child",
+                            "in": 0, "out": 30,
+                            "transform": { "position": [50, 50] },
+                            "type": "solid",
+                            "color": "#ff0000",
+                            "parent": "parent_null"
+                        }
+                    ]
+                }
+            },
+            "assets": { "fonts": [] }
+        }"##;
+        let scene = crate::parser::parse(json).unwrap();
+        let font_cache = std::collections::HashMap::new();
+        let fs = evaluate_scene(&scene, 0, &font_cache).unwrap();
+        // child should be at (150, 150) = parent(100,100) + child(50,50)
+        let child = &fs.layers[0]; // Null layers are skipped, so child is first visible
+        assert!(
+            (child.transform.position.x - 150.0).abs() < 1.0,
+            "expected x=150, got {}", child.transform.position.x
+        );
+        assert!(
+            (child.transform.position.y - 150.0).abs() < 1.0,
+            "expected y=150, got {}", child.transform.position.y
+        );
+    }
+
+    #[test]
+    fn time_remap_reverse() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": { "name": "T", "width": 64, "height": 64, "fps": 30, "duration": 30, "root": "main", "background": "#000000" },
+            "compositions": {
+                "main": {
+                    "layers": [{
+                        "id": "rev",
+                        "in": 0, "out": 30,
+                        "transform": {
+                            "position": [
+                                { "t": 0, "v": [0, 0] },
+                                { "t": 29, "v": [100, 0] }
+                            ]
+                        },
+                        "type": "solid",
+                        "color": "#ff0000",
+                        "time_remap": { "speed": 1.0, "reverse": true }
+                    }]
+                }
+            },
+            "assets": { "fonts": [] }
+        }"##;
+        let scene = crate::parser::parse(json).unwrap();
+        let font_cache = std::collections::HashMap::new();
+        // At frame 0 reversed, position should be near the end (~100)
+        let fs = evaluate_scene(&scene, 0, &font_cache).unwrap();
+        assert!(!fs.layers.is_empty());
+        let pos_x = fs.layers[0].transform.position.x;
+        assert!(pos_x > 90.0, "expected position > 90 for reversed frame 0, got {pos_x}");
+    }
+
+    #[test]
+    fn parent_chain_scale_multiplies() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": { "name": "T", "width": 64, "height": 64, "fps": 30, "duration": 30, "root": "main", "background": "#000000" },
+            "compositions": {
+                "main": {
+                    "layers": [
+                        {
+                            "id": "p",
+                            "in": 0, "out": 30,
+                            "transform": { "position": [0, 0], "scale": [2.0, 2.0] },
+                            "type": "null"
+                        },
+                        {
+                            "id": "c",
+                            "in": 0, "out": 30,
+                            "transform": { "position": [10, 10], "scale": [0.5, 0.5] },
+                            "type": "solid",
+                            "color": "#ff0000",
+                            "parent": "p"
+                        }
+                    ]
+                }
+            },
+            "assets": { "fonts": [] }
+        }"##;
+        let scene = crate::parser::parse(json).unwrap();
+        let font_cache = std::collections::HashMap::new();
+        let fs = evaluate_scene(&scene, 0, &font_cache).unwrap();
+        assert_eq!(fs.layers.len(), 1);
+        let child = &fs.layers[0];
+        // scale should be 2.0 * 0.5 = 1.0
+        assert!(
+            (child.transform.scale.x - 1.0).abs() < 0.01,
+            "expected scale.x=1.0, got {}", child.transform.scale.x
+        );
+    }
+
+    #[test]
+    fn circular_parent_does_not_crash() {
+        // Two layers pointing to each other as parents — should not stack overflow
+        let json = r##"{
+            "version": "1.0",
+            "meta": { "name": "T", "width": 64, "height": 64, "fps": 30, "duration": 30, "root": "main", "background": "#000000" },
+            "compositions": {
+                "main": {
+                    "layers": [
+                        {
+                            "id": "a",
+                            "in": 0, "out": 30,
+                            "transform": { "position": [10, 10] },
+                            "type": "solid",
+                            "color": "#ff0000",
+                            "parent": "b"
+                        },
+                        {
+                            "id": "b",
+                            "in": 0, "out": 30,
+                            "transform": { "position": [20, 20] },
+                            "type": "solid",
+                            "color": "#00ff00",
+                            "parent": "a"
+                        }
+                    ]
+                }
+            },
+            "assets": { "fonts": [] }
+        }"##;
+        let scene = crate::parser::parse(json).unwrap();
+        let font_cache = std::collections::HashMap::new();
+        // Should not panic or hang — depth guard kicks in
+        let fs = evaluate_scene(&scene, 0, &font_cache);
+        assert!(fs.is_ok());
     }
 }

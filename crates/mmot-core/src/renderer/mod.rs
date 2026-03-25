@@ -32,6 +32,7 @@ pub struct ResolvedLayer {
 }
 
 /// Resolved transform values (no keyframes).
+#[derive(Clone)]
 pub struct ResolvedTransform {
     pub position: Vec2,
     pub scale: Vec2,
