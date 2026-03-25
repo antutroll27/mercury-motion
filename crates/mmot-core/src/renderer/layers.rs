@@ -2,7 +2,7 @@ use skia_safe::Canvas;
 
 use crate::renderer::{ResolvedContent, ResolvedLayer};
 
-use super::{blend, gradient, image as img_renderer, shape, solid, text};
+use super::{blend, effects, gradient, image as img_renderer, masks, shape, solid, text};
 
 /// Draw a single resolved layer onto the canvas.
 pub fn draw_layer(canvas: &Canvas, layer: &ResolvedLayer, width: u32, height: u32) {
@@ -17,6 +17,17 @@ pub fn draw_layer(canvas: &Canvas, layer: &ResolvedLayer, width: u32, height: u3
     };
     if let Some(ref mode) = layer.blend_mode {
         paint.set_blend_mode(blend::to_skia_blend_mode(mode));
+    }
+    if let Some(ref layer_masks) = layer.masks
+        && !layer_masks.is_empty()
+    {
+        masks::apply_masks(canvas, layer_masks);
+    }
+    if let Some(ref effects_list) = layer.effects
+        && !effects_list.is_empty()
+        && let Some(filter) = effects::build_image_filter(effects_list)
+    {
+        paint.set_image_filter(filter);
     }
     match &layer.content {
         ResolvedContent::Solid { color } => solid::draw(canvas, color, width, height, &paint),

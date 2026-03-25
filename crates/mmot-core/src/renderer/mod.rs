@@ -1,7 +1,9 @@
 pub mod blend;
+pub mod effects;
 mod gradient;
 mod image;
 pub mod layers;
+pub mod masks;
 pub mod shape;
 mod solid;
 mod surface;
@@ -29,6 +31,10 @@ pub struct ResolvedLayer {
     pub fill_parent: bool,
     /// Optional compositing blend mode for this layer.
     pub blend_mode: Option<crate::schema::effects::BlendMode>,
+    /// Optional masks for clipping this layer.
+    pub masks: Option<Vec<crate::schema::effects::Mask>>,
+    /// Optional visual effects (blur, shadow, color correction, etc.).
+    pub effects: Option<Vec<crate::schema::effects::Effect>>,
 }
 
 /// Resolved transform values (no keyframes).
@@ -133,6 +139,8 @@ mod tests {
                 },
                 fill_parent: false,
                 blend_mode: None,
+                masks: None,
+                effects: None,
             }],
         }
     }
@@ -181,6 +189,8 @@ mod tests {
                 },
                 fill_parent: false,
                 blend_mode: None,
+                masks: None,
+                effects: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -216,6 +226,8 @@ mod tests {
                 },
                 fill_parent: false,
                 blend_mode: None,
+                masks: None,
+                effects: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -248,6 +260,8 @@ mod tests {
                 },
                 fill_parent: false,
                 blend_mode: None,
+                masks: None,
+                effects: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -290,6 +304,8 @@ mod tests {
                 },
                 fill_parent: false,
                 blend_mode: None,
+                masks: None,
+                effects: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -331,6 +347,8 @@ mod tests {
                 },
                 fill_parent: false,
                 blend_mode: None,
+                masks: None,
+                effects: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -356,6 +374,8 @@ mod tests {
                 },
                 fill_parent: true,
                 blend_mode: None,
+                masks: None,
+                effects: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -384,6 +404,8 @@ mod tests {
                 },
                 fill_parent: true,
                 blend_mode: None,
+                masks: None,
+                effects: None,
             }],
         };
         // Red layer on gray background with Multiply blend
@@ -404,6 +426,8 @@ mod tests {
                 },
                 fill_parent: true,
                 blend_mode: Some(BlendMode::Multiply),
+                masks: None,
+                effects: None,
             }],
         };
         let normal_rgba = render(&normal_frame).unwrap();
@@ -412,5 +436,233 @@ mod tests {
         // Normal: red layer replaces gray -> pure red (255,0,0)
         // Multiply: red * gray -> (128,0,0) approximately
         assert_ne!(normal_rgba, multiply_rgba);
+    }
+
+    #[test]
+    fn mask_clips_layer() {
+        use crate::schema::effects::{Mask, MaskMode, MaskPath};
+        // Red solid with ellipse mask — only center pixels should be red
+        let frame = FrameScene {
+            width: 100,
+            height: 100,
+            background: "#000000".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 50.0, y: 50.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Solid {
+                    color: "#ff0000".into(),
+                },
+                fill_parent: true,
+                blend_mode: None,
+                masks: Some(vec![Mask {
+                    path: MaskPath::Ellipse {
+                        cx: 50.0,
+                        cy: 50.0,
+                        rx: 20.0,
+                        ry: 20.0,
+                    },
+                    mode: MaskMode::Add,
+                    feather: 0.0,
+                    opacity: 1.0,
+                    inverted: false,
+                }]),
+                effects: None,
+            }],
+        };
+        let rgba = render(&frame).unwrap();
+        // Corner pixel (0,0) should be black (masked out)
+        assert_eq!(rgba[0], 0, "corner should be black (masked)");
+        // Center pixel (50,50) should be red
+        let center = (50 * 100 + 50) * 4;
+        assert_eq!(rgba[center], 255, "center should be red (inside mask)");
+    }
+
+    #[test]
+    fn blur_effect_changes_output() {
+        use crate::schema::effects::Effect;
+        // Use a small rectangle shape so the blur has edges to soften
+        let sharp = FrameScene {
+            width: 40,
+            height: 40,
+            background: "#000000".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 20.0, y: 20.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Shape {
+                    shape: shape::ResolvedShape::Rect {
+                        width: 16.0,
+                        height: 16.0,
+                        corner_radius: 0.0,
+                        fill: Some("#ffffff".into()),
+                        stroke_color: None,
+                        stroke_width: 0.0,
+                    },
+                },
+                fill_parent: false,
+                blend_mode: None,
+                masks: None,
+                effects: None,
+            }],
+        };
+        let blurred = FrameScene {
+            width: 40,
+            height: 40,
+            background: "#000000".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 20.0, y: 20.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Shape {
+                    shape: shape::ResolvedShape::Rect {
+                        width: 16.0,
+                        height: 16.0,
+                        corner_radius: 0.0,
+                        fill: Some("#ffffff".into()),
+                        stroke_color: None,
+                        stroke_width: 0.0,
+                    },
+                },
+                fill_parent: false,
+                blend_mode: None,
+                masks: None,
+                effects: Some(vec![Effect::GaussianBlur { radius: 3.0 }]),
+            }],
+        };
+        let sharp_rgba = render(&sharp).unwrap();
+        let blurred_rgba = render(&blurred).unwrap();
+        assert_ne!(sharp_rgba, blurred_rgba, "blur should change output");
+    }
+
+    #[test]
+    fn invert_effect_inverts_colors() {
+        use crate::schema::effects::Effect;
+        let frame = FrameScene {
+            width: 4,
+            height: 4,
+            background: "#000000".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 2.0, y: 2.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Solid {
+                    color: "#ff0000".into(),
+                },
+                fill_parent: true,
+                blend_mode: None,
+                masks: None,
+                effects: Some(vec![Effect::Invert]),
+            }],
+        };
+        let rgba = render(&frame).unwrap();
+        // Red inverted should be cyan (0, 255, 255)
+        assert_eq!(rgba[0], 0, "R should be 0 after invert");
+        assert_eq!(rgba[1], 255, "G should be 255 after invert");
+        assert_eq!(rgba[2], 255, "B should be 255 after invert");
+    }
+
+    #[test]
+    fn drop_shadow_effect_produces_filter() {
+        use crate::schema::effects::Effect;
+        let frame = FrameScene {
+            width: 20,
+            height: 20,
+            background: "#ffffff".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 10.0, y: 10.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Solid {
+                    color: "#ff0000".into(),
+                },
+                fill_parent: false,
+                blend_mode: None,
+                masks: None,
+                effects: Some(vec![Effect::DropShadow {
+                    color: "#000000".into(),
+                    offset_x: 3.0,
+                    offset_y: 3.0,
+                    blur: 2.0,
+                    opacity: 0.8,
+                }]),
+            }],
+        };
+        // Should render without panicking
+        let rgba = render(&frame).unwrap();
+        assert_eq!(rgba.len(), 20 * 20 * 4);
+    }
+
+    #[test]
+    fn brightness_contrast_effect_changes_output() {
+        use crate::schema::effects::Effect;
+        let normal = FrameScene {
+            width: 4,
+            height: 4,
+            background: "#000000".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 2.0, y: 2.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Solid {
+                    color: "#808080".into(),
+                },
+                fill_parent: true,
+                blend_mode: None,
+                masks: None,
+                effects: None,
+            }],
+        };
+        let bright = FrameScene {
+            width: 4,
+            height: 4,
+            background: "#000000".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 2.0, y: 2.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Solid {
+                    color: "#808080".into(),
+                },
+                fill_parent: true,
+                blend_mode: None,
+                masks: None,
+                effects: Some(vec![Effect::BrightnessContrast {
+                    brightness: 50.0,
+                    contrast: 0.0,
+                }]),
+            }],
+        };
+        let normal_rgba = render(&normal).unwrap();
+        let bright_rgba = render(&bright).unwrap();
+        assert_ne!(normal_rgba, bright_rgba, "brightness effect should change output");
     }
 }
