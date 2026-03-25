@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@theme {
+  /* Colors */
+  --color-cosmos: #003049;
+  --color-cosmos-deep: #001A2C;
+  --color-cosmos-card: #00253A;
+  --color-cosmos-border: #0A4060;
+  --color-crimson: #C1121F;
+  --color-gochujang: #780000;
+  --color-varden: #FDF0D5;
+  --color-marble: #669BBC;
+  --color-text-primary: #F5F0E8;
+  --color-text-secondary: #8BA4B8;
+  --color-text-muted: #5A7A90;
+
+  /* Fonts */
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-serif: 'Playfair Display', 'Georgia', serif;
+}
