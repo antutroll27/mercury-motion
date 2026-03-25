@@ -88,7 +88,7 @@ pub enum ResolvedContent {
 pub fn render(frame_scene: &FrameScene) -> Result<Vec<u8>> {
     let w = frame_scene.width;
     let h = frame_scene.height;
-    let mut surface = surface::create_cpu_surface(w, h);
+    let mut surface = surface::create_cpu_surface(w, h)?;
     let bg = parse_color(&frame_scene.background);
 
     // Clear with background colour

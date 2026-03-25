@@ -9,8 +9,10 @@ pub fn draw(canvas: &Canvas, rgba: &[u8], width: u32, height: u32, base_paint: &
         None,
     );
     let row_bytes = (width * 4) as usize;
-    let image = images::raster_from_data(&info, Data::new_copy(rgba), row_bytes)
-        .expect("failed to create Skia image from RGBA");
+    let Some(image) = images::raster_from_data(&info, Data::new_copy(rgba), row_bytes) else {
+        tracing::warn!("failed to create Skia image from RGBA ({width}x{height}, {} bytes)", rgba.len());
+        return;
+    };
     let dst = Rect::from_wh(width as f32, height as f32);
     canvas.draw_image_rect(&image, None, dst, base_paint);
 }
