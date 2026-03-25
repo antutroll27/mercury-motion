@@ -4,8 +4,20 @@ Native Rust video creation engine. Define videos in JSON, render to MP4/WebM/GIF
 
 ## Install
 
+| Package | Registry | Command |
+|---------|----------|---------|
+| **mmot** (CLI) | crates.io | `cargo install mmot` |
+| **mercury-motion** (npm) | npmjs.com | `npm install mercury-motion` |
+| **mmot-mcp** (AI/MCP) | npmjs.com | `npx -y mmot-mcp` |
+| **Binary** | GitHub Releases | [Download](https://github.com/antutroll27/mercury-motion/releases/latest) |
+
 ```bash
+# Rust users
 cargo install mmot
+
+# npm / Bun users
+npm install mercury-motion
+npx mmot render scene.mmot.json --output video.mp4
 ```
 
 ## Quick Start
