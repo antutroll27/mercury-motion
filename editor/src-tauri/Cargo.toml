@@ -19,7 +19,6 @@ serde_json = { workspace = true }
 serde = { workspace = true }
 schemars = { workspace = true }
 image = { version = "0.25", default-features = false, features = ["png"] }
-log = "0.4"
 base64 = "0.22"
 tauri = { version = "2.10.3", features = [] }
 tauri-plugin-log = "2"
