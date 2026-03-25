@@ -26,6 +26,37 @@ pub struct Layer {
     /// When set to `"parent"`, the layer fills the entire canvas (position/rotation/scale ignored).
     #[serde(default)]
     pub fill: Option<FillMode>,
+
+    #[serde(default)]
+    pub blend_mode: Option<super::effects::BlendMode>,
+
+    #[serde(default)]
+    pub parent: Option<String>,
+
+    #[serde(default)]
+    pub time_remap: Option<super::effects::TimeRemap>,
+
+    #[serde(default)]
+    pub masks: Option<Vec<super::effects::Mask>>,
+
+    #[serde(default)]
+    pub track_matte: Option<super::effects::TrackMatte>,
+
+    #[serde(default)]
+    pub adjustment: bool,
+
+    #[serde(default)]
+    pub effects: Option<Vec<super::effects::Effect>>,
+
+    #[serde(default)]
+    pub motion_blur: bool,
+
+    #[serde(default)]
+    pub trim_paths: Option<super::effects::TrimPaths>,
+
+    #[serde(default)]
+    pub path_animation: Option<super::effects::PathAnimation>,
+
     #[serde(flatten)]
     pub content: LayerContent,
 }
@@ -71,6 +102,7 @@ pub enum LayerContent {
     Gradient {
         gradient: GradientSpec,
     },
+    Null,
 }
 
 fn default_center_align() -> TextAlign {
@@ -192,3 +224,66 @@ pub struct Composition {
 
 /// Map of composition ID to composition.
 pub type Compositions = HashMap<String, Composition>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn existing_minimal_scene_still_parses() {
+        let json = std::fs::read_to_string("../../tests/fixtures/valid/minimal.mmot.json").unwrap();
+        let scene: crate::schema::Scene = serde_json::from_str(&json).unwrap();
+        assert!(!scene.compositions.is_empty());
+    }
+
+    #[test]
+    fn layer_with_ae_fields_deserializes() {
+        let json = r##"{
+            "id": "test",
+            "in": 0, "out": 30,
+            "transform": { "position": [0, 0] },
+            "type": "solid",
+            "color": "#ff0000",
+            "blend_mode": "multiply",
+            "parent": "null_1",
+            "adjustment": false,
+            "effects": [
+                { "type": "gaussian_blur", "radius": 5.0 }
+            ]
+        }"##;
+        let layer: Layer = serde_json::from_str(json).unwrap();
+        assert!(layer.blend_mode.is_some());
+        assert_eq!(layer.parent.as_deref(), Some("null_1"));
+        assert!(layer.effects.is_some());
+    }
+
+    #[test]
+    fn null_layer_deserializes() {
+        let json = r#"{
+            "id": "null_1",
+            "in": 0, "out": 30,
+            "transform": { "position": [320, 180] },
+            "type": "null"
+        }"#;
+        let layer: Layer = serde_json::from_str(json).unwrap();
+        assert!(matches!(layer.content, LayerContent::Null));
+    }
+
+    #[test]
+    fn layer_defaults_are_none() {
+        let json = r##"{
+            "id": "basic",
+            "in": 0, "out": 30,
+            "transform": { "position": [0, 0] },
+            "type": "solid",
+            "color": "#000000"
+        }"##;
+        let layer: Layer = serde_json::from_str(json).unwrap();
+        assert!(layer.blend_mode.is_none());
+        assert!(layer.parent.is_none());
+        assert!(layer.effects.is_none());
+        assert!(layer.masks.is_none());
+        assert!(!layer.adjustment);
+        assert!(!layer.motion_blur);
+    }
+}

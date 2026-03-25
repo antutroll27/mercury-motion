@@ -485,6 +485,10 @@ fn evaluate_composition(
                 );
                 continue;
             }
+            LayerContent::Null => {
+                // Null layers produce no visual output — used only for parenting
+                continue;
+            }
         };
 
         resolved_layers.push(ResolvedLayer {
