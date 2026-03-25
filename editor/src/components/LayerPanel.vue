@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useSceneStore } from '../stores/scene'
+import AddLayerDialog from './AddLayerDialog.vue'
 
 const store = useSceneStore()
+
+const addLayerDialogRef = ref<InstanceType<typeof AddLayerDialog> | null>(null)
 
 const layerTypeIcons: Record<string, string> = {
   solid: '\u25A0',
@@ -15,19 +19,10 @@ const layerTypeIcons: Record<string, string> = {
   composition: '\u229E',
 }
 
-function addNewLayer() {
-  const id = `layer_${Date.now()}`
-  store.addLayer({
-    id,
-    type: 'solid',
-    in: 0,
-    out: store.totalFrames,
-    transform: {
-      position: [store.scene.meta.width / 2, store.scene.meta.height / 2],
-    },
-    color: '#669BBC',
-  })
-  store.selectLayer(id)
+function openAddLayer() {
+  if (addLayerDialogRef.value) {
+    addLayerDialogRef.value.showDialog = true
+  }
 }
 </script>
 
@@ -38,7 +33,7 @@ function addNewLayer() {
       <span class="font-mono text-[10px] text-text-muted uppercase tracking-[0.2em]">Layers</span>
       <button
         class="w-6 h-6 flex items-center justify-center text-text-muted hover:text-crimson rounded transition-colors text-lg"
-        @click="addNewLayer"
+        @click="openAddLayer"
       >
         +
       </button>
@@ -81,5 +76,7 @@ function addNewLayer() {
         <span class="font-mono text-[10px] text-text-muted uppercase tracking-widest">Add a layer</span>
       </div>
     </div>
+
+    <AddLayerDialog ref="addLayerDialogRef" />
   </div>
 </template>

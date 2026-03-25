@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useSceneStore } from './stores/scene'
 import TopBar from './components/TopBar.vue'
 import LayerPanel from './components/LayerPanel.vue'
+import MediaBrowser from './components/MediaBrowser.vue'
 import CanvasPreview from './components/CanvasPreview.vue'
 import Timeline from './components/Timeline.vue'
 import PropertyInspector from './components/PropertyInspector.vue'
 
 const store = useSceneStore()
+const leftTab = ref<'layers' | 'media'>('layers')
 
 onMounted(() => {
   // Start with default scene
@@ -22,8 +24,29 @@ onMounted(() => {
 
     <!-- Main Content -->
     <div class="flex-1 flex overflow-hidden">
-      <!-- Left: Layer Panel -->
-      <LayerPanel class="w-64 border-r border-cosmos-border" />
+      <!-- Left: Layer Panel / Media Browser -->
+      <div class="w-64 border-r border-cosmos-border flex flex-col overflow-hidden">
+        <!-- Tab Switcher -->
+        <div class="flex border-b border-cosmos-border">
+          <button
+            class="flex-1 py-2 font-mono text-[10px] uppercase tracking-[0.15em] transition-colors"
+            :class="leftTab === 'layers' ? 'text-crimson border-b-2 border-crimson' : 'text-text-muted hover:text-text-primary'"
+            @click="leftTab = 'layers'"
+          >
+            Layers
+          </button>
+          <button
+            class="flex-1 py-2 font-mono text-[10px] uppercase tracking-[0.15em] transition-colors"
+            :class="leftTab === 'media' ? 'text-crimson border-b-2 border-crimson' : 'text-text-muted hover:text-text-primary'"
+            @click="leftTab = 'media'"
+          >
+            Media
+          </button>
+        </div>
+
+        <LayerPanel v-show="leftTab === 'layers'" class="flex-1" />
+        <MediaBrowser v-show="leftTab === 'media'" class="flex-1" />
+      </div>
 
       <!-- Center: Canvas Preview -->
       <CanvasPreview class="flex-1" />

@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useSceneStore } from '../stores/scene'
+// Components used in template below
+// @ts-ignore TS6133 — vue-tsc does not detect template usage
+import EffectsPanel from './EffectsPanel.vue'
+// @ts-ignore TS6133 — vue-tsc does not detect template usage
+import MaskEditor from './MaskEditor.vue'
 
 const store = useSceneStore()
 
@@ -164,6 +169,12 @@ function updateTransform(prop: string, value: number, index?: number) {
           </option>
         </select>
       </div>
+
+      <!-- Effects Panel -->
+      <EffectsPanel />
+
+      <!-- Mask Editor -->
+      <MaskEditor />
     </div>
   </div>
 </template>
