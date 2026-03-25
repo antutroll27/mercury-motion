@@ -2,6 +2,18 @@
 name = "mmot-core"
 version = "0.1.0"
 edition = "2024"
+description = "Native Rust video creation engine — JSON to MP4/WebM/GIF, 100x faster than Remotion"
+license = "MIT"
+repository = "https://github.com/antutroll27/mercury-motion"
+homepage = "https://github.com/antutroll27/mercury-motion"
+keywords = ["video", "motion-graphics", "rendering", "animation", "encoder"]
+categories = ["multimedia::video", "rendering", "graphics"]
+readme = "../../README.md"
+
+[features]
+default = []
+audio-codec = ["opus"]
+ffmpeg = ["dep:ffmpeg-next", "dep:ffmpeg-sys-next"]
 
 [dependencies]
 serde = { workspace = true }
@@ -17,6 +29,10 @@ serde_path_to_error = "0.1"
 muxide = "0.2"
 symphonia = { version = "0.5", features = ["mp3", "wav", "flac", "aac", "ogg", "vorbis", "pcm", "adpcm"] }
 regex = "1"
+gif = "0.13"
+opus = { version = "0.3", optional = true }
+ffmpeg-next = { version = "8", optional = true }
+ffmpeg-sys-next = { version = "8", optional = true, default-features = false }
 
 [dev-dependencies]
 pretty_assertions = "1"

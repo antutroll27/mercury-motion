@@ -1,5 +1,7 @@
 pub mod audio;
+pub mod font;
 pub mod image;
+pub mod video;
 
 /// Decoded image asset: raw RGBA bytes + dimensions.
 pub struct DecodedImage {

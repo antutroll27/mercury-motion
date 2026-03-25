@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mmot": {
+      "command": "npx",
+      "args": ["-y", "mmot-mcp"]
+    }
+  }
+}

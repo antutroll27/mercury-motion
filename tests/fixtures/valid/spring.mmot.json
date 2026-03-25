@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "SpringAnim",
+    "width": 200,
+    "height": 200,
+    "fps": 30,
+    "duration": 60,
+    "background": "#000000",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "bouncer",
+          "type": "solid",
+          "in": 0,
+          "out": 60,
+          "color": "#ff6600",
+          "transform": {
+            "position": [
+              { "t": 0, "v": [100, 180], "easing": { "type": "spring", "mass": 1.0, "stiffness": 170.0, "damping": 26.0 } },
+              { "t": 60, "v": [100, 100] }
+            ],
+            "scale": [1.0, 1.0],
+            "opacity": 1.0,
+            "rotation": 0.0
+          }
+        }
+      ]
+    }
+  }
+}

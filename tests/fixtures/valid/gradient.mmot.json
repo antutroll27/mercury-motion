@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "GradientTest",
+    "width": 100,
+    "height": 100,
+    "fps": 30,
+    "duration": 1,
+    "background": "#000000",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "grad",
+          "type": "gradient",
+          "in": 0,
+          "out": 1,
+          "gradient": {
+            "gradient_type": "linear",
+            "start": [0, 0],
+            "end": [1, 1],
+            "colors": [
+              { "offset": 0.0, "color": "#ff0000" },
+              { "offset": 1.0, "color": "#0000ff" }
+            ]
+          },
+          "transform": { "position": [50, 50], "scale": [1, 1], "opacity": 1.0, "rotation": 0.0 }
+        }
+      ]
+    }
+  }
+}

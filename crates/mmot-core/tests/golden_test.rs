@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::Path;
 
 use mmot_core::{parser, pipeline, renderer};
@@ -6,7 +7,8 @@ fn render_frame_rgba(fixture: &str, frame: u64) -> Vec<u8> {
     let json =
         std::fs::read_to_string(Path::new("../../tests/fixtures/valid").join(fixture)).unwrap();
     let scene = parser::parse(&json).unwrap();
-    let frame_scene = pipeline::evaluate_scene(&scene, frame).unwrap();
+    let no_fonts = HashMap::new();
+    let frame_scene = pipeline::evaluate_scene(&scene, frame, &no_fonts).unwrap();
     renderer::render(&frame_scene).unwrap()
 }
 
@@ -22,6 +24,14 @@ fn load_reference_png(name: &str, frame: u64) -> Vec<u8> {
 fn golden_minimal_frame_0() {
     let rendered = render_frame_rgba("minimal.mmot.json", 0);
     let reference = load_reference_png("minimal", 0);
+    assert_eq!(rendered.len(), reference.len(), "frame size mismatch");
+    assert_eq!(rendered, reference, "pixel mismatch — renderer output changed");
+}
+
+#[test]
+fn golden_gradient_frame_0() {
+    let rendered = render_frame_rgba("gradient.mmot.json", 0);
+    let reference = load_reference_png("gradient", 0);
     assert_eq!(rendered.len(), reference.len(), "frame size mismatch");
     assert_eq!(rendered, reference, "pixel mismatch — renderer output changed");
 }

@@ -55,13 +55,36 @@ Cargo.toml          # Workspace root
 # mmot-core/Cargo.toml
 [features]
 default = []
+audio-codec = ["opus"]                  # Opus audio encoding (requires C libopus)
 gpu = ["wgpu"]                          # wgpu GPU backend (Vulkan/Metal/DX12)
 ffmpeg = ["ffmpeg-next", "ffmpeg-sys-next"]  # Extended codec support
 filmtools-ai = ["ort"]                  # ONNX model loading (Depth Anything, SAM2)
 ```
 
 Default build uses CPU Skia renderer + rav1e encoder (zero C deps).
-`--features ffmpeg` adds H.264/HEVC/ProRes support via libav.
+`--features audio-codec` adds Opus audio encoding (requires C compiler + cmake for libopus).
+`--features ffmpeg` adds video layer decoding, audio muxing into MP4, and WebM output.
+
+### ffmpeg Feature — Windows Setup
+
+```bash
+# 1. Download FFmpeg 7.1 shared dev libs
+# From: https://github.com/BtbN/FFmpeg-Builds/releases (win64-gpl-shared-7.1)
+# Extract to: d:/ffmpeg-dev/ffmpeg-n7.1-latest-win64-gpl-shared-7.1/
+
+# 2. Extract libclang.dll (needed by bindgen for FFI generation)
+# From: LLVM 18.x installer (use 7z to extract bin/libclang.dll)
+# Extract to: d:/llvm/llvm-extracted/bin/
+
+# 3. Set env vars and build
+export FFMPEG_DIR="d:/ffmpeg-dev/ffmpeg-n7.1-latest-win64-gpl-shared-7.1"
+export LIBCLANG_PATH="d:/llvm/llvm-extracted/bin"
+cargo build -p mmot-core --features ffmpeg
+
+# 4. For tests, copy DLLs to target directory
+cp d:/ffmpeg-dev/ffmpeg-n7.1-latest-win64-gpl-shared-7.1/bin/*.dll target/debug/deps/
+cargo test -p mmot-core --features ffmpeg
+```
 
 ---
 

@@ -32,6 +32,10 @@ pub enum MmotError {
     #[error("asset load error: {0}")]
     AssetLoad(String),
 
+    /// Font file could not be loaded or parsed.
+    #[error("font load error: {0}")]
+    FontLoad(String),
+
     /// Frame rendering failed.
     #[error("render failed at frame {frame}: {reason}")]
     RenderFailed { frame: u64, reason: String },
@@ -39,6 +43,14 @@ pub enum MmotError {
     /// Encoding error.
     #[error("encoder error: {0}")]
     Encoder(String),
+
+    /// Audio encoding error.
+    #[error("audio encode error: {0}")]
+    AudioEncode(String),
+
+    /// Video decoding error.
+    #[error("video decode error: {0}")]
+    VideoDecode(String),
 
     /// IO error (file read/write).
     #[error("io error: {0}")]

@@ -12,3 +12,8 @@ Thumbs.db
 
 # Claude local settings
 .claude/settings.local.json
+
+# Docs (internal/business)
+/docs/
+node_modules/
+node_modules/

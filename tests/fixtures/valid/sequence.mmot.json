@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "SequenceTest",
+    "width": 100,
+    "height": 100,
+    "fps": 30,
+    "duration": 60,
+    "background": "#000000",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "sequence": true,
+      "transition": { "type": "crossfade", "duration": 10 },
+      "layers": [
+        {
+          "id": "red",
+          "type": "solid",
+          "in": 0, "out": 30,
+          "color": "#ff0000",
+          "transform": { "position": [50, 50], "scale": [1, 1], "opacity": 1.0, "rotation": 0.0 }
+        },
+        {
+          "id": "blue",
+          "type": "solid",
+          "in": 0, "out": 30,
+          "color": "#0000ff",
+          "transform": { "position": [50, 50], "scale": [1, 1], "opacity": 1.0, "rotation": 0.0 }
+        }
+      ]
+    }
+  }
+}

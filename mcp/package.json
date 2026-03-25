@@ -1,0 +1,31 @@
+{
+  "name": "mmot-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Mercury-Motion — create and render video animations via AI",
+  "type": "module",
+  "main": "server.js",
+  "bin": {
+    "mmot-mcp": "server.js"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/antutroll27/mercury-motion"
+  },
+  "keywords": [
+    "mcp",
+    "mercury-motion",
+    "video",
+    "animation",
+    "motion-graphics",
+    "remotion",
+    "ai"
+  ],
+  "files": [
+    "server.js",
+    "README.md"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}

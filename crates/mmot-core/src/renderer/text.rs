@@ -14,6 +14,7 @@ pub fn draw(
     font_weight: u32,
     color: &str,
     align: &TextAlign,
+    custom_font_data: Option<&[u8]>,
 ) {
     let font_mgr = FontMgr::new();
     let style = FontStyle::new(
@@ -21,10 +22,27 @@ pub fn draw(
         skia_safe::font_style::Width::NORMAL,
         skia_safe::font_style::Slant::Upright,
     );
-    let typeface = font_mgr
-        .match_family_style(font_family, style)
-        .or_else(|| font_mgr.match_family_style("sans-serif", style))
-        .unwrap_or_else(|| font_mgr.legacy_make_typeface(None, style).unwrap());
+    let system_fallback = || -> Option<skia_safe::Typeface> {
+        font_mgr
+            .match_family_style(font_family, style)
+            .or_else(|| font_mgr.match_family_style("sans-serif", style))
+            .or_else(|| font_mgr.legacy_make_typeface(None, style))
+    };
+
+    let typeface = if let Some(data) = custom_font_data {
+        font_mgr.new_from_data(data, None)
+            .or_else(|| {
+                tracing::warn!("failed to parse custom font data, falling back to system font");
+                system_fallback()
+            })
+    } else {
+        system_fallback()
+    };
+
+    let typeface = match typeface {
+        Some(tf) => tf,
+        None => return, // no fonts available — skip text rendering
+    };
 
     let font = Font::new(typeface, font_size as f32);
     let (hex_r, hex_g, hex_b) = parse_hex_color(color);
@@ -33,7 +51,10 @@ pub fn draw(
     paint.set_color(Color::from_rgb(hex_r, hex_g, hex_b));
     paint.set_anti_alias(true);
 
-    let blob = TextBlob::new(text, &font).unwrap_or_else(|| TextBlob::new("?", &font).unwrap());
+    let blob = match TextBlob::new(text, &font).or_else(|| TextBlob::new("?", &font)) {
+        Some(b) => b,
+        None => return, // cannot create text blob — skip rendering
+    };
 
     let bounds = blob.bounds();
     let draw_x = match align {
@@ -52,6 +73,9 @@ fn skia_weight(weight: u32) -> skia_safe::font_style::Weight {
 
 fn parse_hex_color(hex: &str) -> (u8, u8, u8) {
     let hex = hex.trim_start_matches('#');
+    if hex.len() < 6 {
+        return (255, 255, 255); // default to white for malformed colors
+    }
     let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(255);
     let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(255);
     let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(255);
