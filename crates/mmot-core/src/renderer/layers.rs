@@ -60,7 +60,7 @@ pub fn draw_layer(canvas: &Canvas, layer: &ResolvedLayer, width: u32, height: u3
             );
         }
         ResolvedContent::Shape { shape: s } => {
-            shape::draw(canvas, s, &paint);
+            shape::draw(canvas, s, &paint, layer.trim_start, layer.trim_end);
         }
         ResolvedContent::Gradient {
             gradient: g,

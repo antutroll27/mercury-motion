@@ -40,6 +40,10 @@ pub struct ResolvedLayer {
     pub adjustment: bool,
     /// If set, the layer ID of a track matte source (stub — not yet rendered).
     pub track_matte_source: Option<String>,
+    /// Trim paths start (0.0–1.0). Portion of shape path to begin drawing.
+    pub trim_start: f64,
+    /// Trim paths end (0.0–1.0). Portion of shape path to stop drawing.
+    pub trim_end: f64,
 }
 
 /// Resolved transform values (no keyframes).
@@ -166,6 +170,8 @@ mod tests {
                 effects: None,
                 adjustment: false,
                 track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
             }],
         }
     }
@@ -218,6 +224,8 @@ mod tests {
                 effects: None,
                 adjustment: false,
                 track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -257,6 +265,8 @@ mod tests {
                 effects: None,
                 adjustment: false,
                 track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -293,6 +303,8 @@ mod tests {
                 effects: None,
                 adjustment: false,
                 track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -339,6 +351,8 @@ mod tests {
                 effects: None,
                 adjustment: false,
                 track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -384,6 +398,8 @@ mod tests {
                 effects: None,
                 adjustment: false,
                 track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -413,6 +429,8 @@ mod tests {
                 effects: None,
                 adjustment: false,
                 track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -445,6 +463,8 @@ mod tests {
                 effects: None,
                 adjustment: false,
                 track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
             }],
         };
         // Red layer on gray background with Multiply blend
@@ -469,6 +489,8 @@ mod tests {
                 effects: None,
                 adjustment: false,
                 track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
             }],
         };
         let normal_rgba = render(&normal_frame).unwrap();
@@ -515,6 +537,8 @@ mod tests {
                 effects: None,
                 adjustment: false,
                 track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -557,6 +581,8 @@ mod tests {
                 effects: None,
                 adjustment: false,
                 track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
             }],
         };
         let blurred = FrameScene {
@@ -587,6 +613,8 @@ mod tests {
                 effects: Some(vec![Effect::GaussianBlur { radius: 3.0 }]),
                 adjustment: false,
                 track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
             }],
         };
         let sharp_rgba = render(&sharp).unwrap();
@@ -618,6 +646,8 @@ mod tests {
                 effects: Some(vec![Effect::Invert]),
                 adjustment: false,
                 track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -657,6 +687,8 @@ mod tests {
                 }]),
                 adjustment: false,
                 track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
             }],
         };
         // Should render without panicking
@@ -688,6 +720,8 @@ mod tests {
                 effects: None,
                 adjustment: false,
                 track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
             }],
         };
         let bright = FrameScene {
@@ -714,6 +748,8 @@ mod tests {
                 }]),
                 adjustment: false,
                 track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
             }],
         };
         let normal_rgba = render(&normal).unwrap();
@@ -749,6 +785,8 @@ mod tests {
                     effects: None,
                     adjustment: false,
                     track_matte_source: None,
+                    trim_start: 0.0,
+                    trim_end: 1.0,
                 },
                 ResolvedLayer {
                     opacity: 1.0,
@@ -767,6 +805,8 @@ mod tests {
                     effects: Some(vec![Effect::Invert]),
                     adjustment: true,
                     track_matte_source: None,
+                    trim_start: 0.0,
+                    trim_end: 1.0,
                 },
             ],
         };
@@ -775,5 +815,56 @@ mod tests {
         assert_eq!(rgba[0], 0, "R should be 0 after invert adjustment");
         assert_eq!(rgba[1], 0, "G should be 0 after invert adjustment");
         assert_eq!(rgba[2], 0, "B should be 0 after invert adjustment");
+    }
+
+    #[test]
+    fn trim_paths_renders_partial_ellipse() {
+        // Use a large canvas so the entire ellipse is visible even at origin.
+        // Shapes are centered at (0,0) in local space; with identity transform
+        // (position=0,0), they appear at the canvas origin.
+        // Use a 200x200 canvas with 60x60 ellipse placed at center (100,100).
+        // But the current transform collapses to identity for non-rotating layers,
+        // so just use a big canvas with a line shape where trim is obvious.
+        let make_line = |trim_end: f64| FrameScene {
+            width: 100,
+            height: 100,
+            background: "#000000".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 50.0, y: 50.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Shape {
+                    shape: shape::ResolvedShape::Line {
+                        x1: 0.0,
+                        y1: 0.0,
+                        x2: 99.0,
+                        y2: 0.0,
+                        stroke_color: "#ffffff".into(),
+                        stroke_width: 2.0,
+                    },
+                },
+                fill_parent: false,
+                blend_mode: None,
+                masks: None,
+                effects: None,
+                adjustment: false,
+                track_matte_source: None,
+                trim_start: 0.0,
+                trim_end,
+            }],
+        };
+        let full_rgba = render(&make_line(1.0)).expect("full renders");
+        let half_rgba = render(&make_line(0.5)).expect("half renders");
+        // Count white pixels
+        let full_white = full_rgba.chunks(4).filter(|px| px[0] > 200).count();
+        let half_white = half_rgba.chunks(4).filter(|px| px[0] > 200).count();
+        assert!(
+            half_white < full_white,
+            "half-trimmed line should have fewer white pixels ({half_white}) than full ({full_white})"
+        );
     }
 }

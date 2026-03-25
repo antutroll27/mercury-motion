@@ -267,6 +267,28 @@ fn collect_audio(scene: &Scene) -> Result<Option<(Vec<f32>, u32, u32)>> {
     )))
 }
 
+/// Evaluate position along a polyline path at normalised time t (0.0–1.0).
+/// Linearly interpolates between consecutive points.
+fn evaluate_path_position(points: &[[f64; 2]], t: f64) -> (f64, f64) {
+    if points.is_empty() {
+        return (0.0, 0.0);
+    }
+    if points.len() == 1 {
+        return (points[0][0], points[0][1]);
+    }
+    let t = t.clamp(0.0, 1.0);
+    let segments = (points.len() - 1) as f64;
+    let raw = t * segments;
+    let idx = (raw.floor() as usize).min(points.len() - 2);
+    let frac = raw - idx as f64;
+    let a = &points[idx];
+    let b = &points[idx + 1];
+    (
+        a[0] + (b[0] - a[0]) * frac,
+        a[1] + (b[1] - a[1]) * frac,
+    )
+}
+
 /// Evaluate a scene at a specific frame number into a FrameScene.
 /// Supports recursive precomp rendering.
 ///
@@ -316,7 +338,7 @@ fn compute_sequence_timing<'a>(
 /// Guards against circular parenting with a max depth of 32.
 fn resolve_parent_chain(
     layer_id: &str,
-    transforms: &HashMap<String, (ResolvedTransform, Option<String>)>,
+    transforms: &HashMap<String, (ResolvedTransform, Option<String>, u64)>,
     depth: u32,
 ) -> ResolvedTransform {
     if depth > 32 {
@@ -391,7 +413,8 @@ fn evaluate_composition(
 
     // ── Pass 1: Compute raw transforms for ALL active layers (including Null) ──
     // This is needed so parent transforms can be looked up by child layers.
-    let mut transform_map: HashMap<String, (ResolvedTransform, Option<String>)> =
+    // Also stores effective_frame for use by trim_paths evaluation in pass 2.
+    let mut transform_map: HashMap<String, (ResolvedTransform, Option<String>, u64)> =
         HashMap::new();
 
     for (i, (layer, eff_in, eff_out)) in timed_layers.iter().enumerate() {
@@ -411,10 +434,29 @@ fn evaluate_composition(
             None => frame,
         };
 
-        let position = evaluate_vec2(&layer.transform.position, effective_frame);
+        let mut position = evaluate_vec2(&layer.transform.position, effective_frame);
         let scale = evaluate_vec2(&layer.transform.scale, effective_frame);
         let mut opacity = evaluate_f64(&layer.transform.opacity, effective_frame);
-        let rotation = evaluate_f64(&layer.transform.rotation, effective_frame);
+        let mut rotation = evaluate_f64(&layer.transform.rotation, effective_frame);
+
+        // Apply path animation: move position along a polyline path
+        if let Some(ref path_anim) = layer.path_animation {
+            let t = if layer.out_point > layer.in_point {
+                (effective_frame.saturating_sub(layer.in_point)) as f64
+                    / (layer.out_point - layer.in_point) as f64
+            } else {
+                0.0
+            };
+            let t = t.clamp(0.0, 1.0);
+            let (px, py) = evaluate_path_position(&path_anim.points, t);
+            position = Vec2 { x: px, y: py };
+            if path_anim.auto_orient {
+                let dt = 0.001;
+                let (px2, py2) =
+                    evaluate_path_position(&path_anim.points, (t + dt).min(1.0));
+                rotation = f64::atan2(py2 - py, px2 - px).to_degrees();
+            }
+        }
 
         // Apply transition opacity for overlapping layers in sequence mode
         if comp.sequence
@@ -472,7 +514,7 @@ fn evaluate_composition(
 
         transform_map.insert(
             layer.id.clone(),
-            (transform, layer.parent.clone()),
+            (transform, layer.parent.clone(), effective_frame),
         );
     }
 
@@ -486,6 +528,21 @@ fn evaluate_composition(
         // Resolve the transform with parent chain
         let transform = resolve_parent_chain(&layer.id, &transform_map, 0);
         let opacity = transform.opacity;
+
+        // Retrieve the effective frame stored in pass 1 for trim_paths evaluation
+        let effective_frame = transform_map
+            .get(&layer.id)
+            .map(|(_, _, ef)| *ef)
+            .unwrap_or(frame);
+
+        // Evaluate trim paths for shape layers
+        let (trim_start, trim_end) = match &layer.trim_paths {
+            Some(tp) => (
+                evaluate_f64(&tp.start, effective_frame).clamp(0.0, 1.0),
+                evaluate_f64(&tp.end, effective_frame).clamp(0.0, 1.0),
+            ),
+            None => (0.0, 1.0),
+        };
 
         let content = match &layer.content {
             LayerContent::Solid { color } => ResolvedContent::Solid {
@@ -627,6 +684,8 @@ fn evaluate_composition(
             effects: layer.effects.clone(),
             adjustment: layer.adjustment,
             track_matte_source: layer.track_matte.as_ref().map(|tm| tm.source.clone()),
+            trim_start,
+            trim_end,
         });
     }
 
@@ -1202,5 +1261,187 @@ mod tests {
         let b = vec![100u8, 100, 0, 255];
         let result = average_frames(&[a, b]);
         assert_eq!(result, vec![50, 100, 100, 255]);
+    }
+
+    #[test]
+    fn trim_paths_changes_output() {
+        // A horizontal line with full stroke vs half stroke should produce different output.
+        // Lines are drawn at absolute coordinates in local space, so we use coordinates
+        // that are fully within the canvas.
+        let full_json = r##"{
+            "version": "1.0",
+            "meta": { "name": "TrimFull", "width": 100, "height": 100, "fps": 30, "duration": 1, "root": "main", "background": "#000000" },
+            "compositions": {
+                "main": {
+                    "layers": [{
+                        "id": "line",
+                        "in": 0, "out": 1,
+                        "transform": { "position": [50, 50] },
+                        "type": "shape",
+                        "shape": {
+                            "shape_type": "line",
+                            "x1": 0, "y1": 0, "x2": 99, "y2": 0,
+                            "stroke": { "color": "#ffffff", "width": 2.0 }
+                        }
+                    }]
+                }
+            },
+            "assets": { "fonts": [] }
+        }"##;
+        let half_json = r##"{
+            "version": "1.0",
+            "meta": { "name": "TrimHalf", "width": 100, "height": 100, "fps": 30, "duration": 1, "root": "main", "background": "#000000" },
+            "compositions": {
+                "main": {
+                    "layers": [{
+                        "id": "line",
+                        "in": 0, "out": 1,
+                        "transform": { "position": [50, 50] },
+                        "type": "shape",
+                        "shape": {
+                            "shape_type": "line",
+                            "x1": 0, "y1": 0, "x2": 99, "y2": 0,
+                            "stroke": { "color": "#ffffff", "width": 2.0 }
+                        },
+                        "trim_paths": { "start": 0.0, "end": 0.5 }
+                    }]
+                }
+            },
+            "assets": { "fonts": [] }
+        }"##;
+
+        let scene_full = crate::parser::parse(full_json).expect("full scene parses");
+        let scene_half = crate::parser::parse(half_json).expect("half scene parses");
+        let font_cache = std::collections::HashMap::new();
+
+        let fs_full = evaluate_scene(&scene_full, 0, &font_cache).expect("full evaluates");
+        let fs_half = evaluate_scene(&scene_half, 0, &font_cache).expect("half evaluates");
+
+        // The half-trimmed layer should have trim_end = 0.5
+        assert!(
+            (fs_half.layers[0].trim_end - 0.5).abs() < 0.01,
+            "expected trim_end 0.5, got {}",
+            fs_half.layers[0].trim_end,
+        );
+
+        let rgba_full = crate::renderer::render(&fs_full).expect("full renders");
+        let rgba_half = crate::renderer::render(&fs_half).expect("half renders");
+
+        // Full stroke and half stroke should produce different pixel output
+        assert_ne!(rgba_full, rgba_half, "trim_paths should change rendered output");
+    }
+
+    #[test]
+    fn path_animation_moves_position() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": { "name": "PathAnim", "width": 64, "height": 64, "fps": 30, "duration": 30, "root": "main", "background": "#000000" },
+            "compositions": {
+                "main": {
+                    "layers": [{
+                        "id": "mover",
+                        "in": 0, "out": 30,
+                        "transform": { "position": [0, 0] },
+                        "type": "solid",
+                        "color": "#ff0000",
+                        "path_animation": {
+                            "points": [[0, 0], [64, 0], [64, 64]],
+                            "auto_orient": false
+                        }
+                    }]
+                }
+            },
+            "assets": { "fonts": [] }
+        }"##;
+        let scene = crate::parser::parse(json).expect("path_animation scene should parse");
+        let font_cache = std::collections::HashMap::new();
+
+        // At frame 0, should be at start (0,0)
+        let fs0 = evaluate_scene(&scene, 0, &font_cache).expect("frame 0 evaluates");
+        assert!(!fs0.layers.is_empty());
+        assert!(
+            (fs0.layers[0].transform.position.x - 0.0).abs() < 1.0,
+            "frame 0: expected x near 0, got {}",
+            fs0.layers[0].transform.position.x,
+        );
+
+        // At frame 15 (midpoint), should be at (64, 0)
+        let fs15 = evaluate_scene(&scene, 15, &font_cache).expect("frame 15 evaluates");
+        assert!(
+            (fs15.layers[0].transform.position.x - 64.0).abs() < 2.0,
+            "frame 15: expected x near 64, got {}",
+            fs15.layers[0].transform.position.x,
+        );
+        assert!(
+            (fs15.layers[0].transform.position.y - 0.0).abs() < 2.0,
+            "frame 15: expected y near 0, got {}",
+            fs15.layers[0].transform.position.y,
+        );
+    }
+
+    #[test]
+    fn path_animation_auto_orient_rotates() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": { "name": "AutoOrient", "width": 64, "height": 64, "fps": 30, "duration": 30, "root": "main", "background": "#000000" },
+            "compositions": {
+                "main": {
+                    "layers": [{
+                        "id": "mover",
+                        "in": 0, "out": 30,
+                        "transform": { "position": [0, 0] },
+                        "type": "solid",
+                        "color": "#ff0000",
+                        "path_animation": {
+                            "points": [[0, 0], [64, 0], [64, 64]],
+                            "auto_orient": true
+                        }
+                    }]
+                }
+            },
+            "assets": { "fonts": [] }
+        }"##;
+        let scene = crate::parser::parse(json).expect("auto_orient scene should parse");
+        let font_cache = std::collections::HashMap::new();
+
+        // At frame 0, moving right along X-axis: rotation should be ~0 degrees
+        let fs0 = evaluate_scene(&scene, 0, &font_cache).expect("frame 0 evaluates");
+        assert!(
+            fs0.layers[0].transform.rotation.abs() < 5.0,
+            "frame 0: expected rotation near 0, got {}",
+            fs0.layers[0].transform.rotation,
+        );
+
+        // At frame 20 (past midpoint), moving down along Y-axis: rotation should be ~90 degrees
+        let fs20 = evaluate_scene(&scene, 20, &font_cache).expect("frame 20 evaluates");
+        assert!(
+            (fs20.layers[0].transform.rotation - 90.0).abs() < 5.0,
+            "frame 20: expected rotation near 90, got {}",
+            fs20.layers[0].transform.rotation,
+        );
+    }
+
+    #[test]
+    fn evaluate_path_position_edge_cases() {
+        // Empty points
+        let (x, y) = super::evaluate_path_position(&[], 0.5);
+        assert_eq!(x, 0.0);
+        assert_eq!(y, 0.0);
+
+        // Single point
+        let (x, y) = super::evaluate_path_position(&[[10.0, 20.0]], 0.5);
+        assert_eq!(x, 10.0);
+        assert_eq!(y, 20.0);
+
+        // Two points, midpoint
+        let (x, y) = super::evaluate_path_position(&[[0.0, 0.0], [100.0, 0.0]], 0.5);
+        assert!((x - 50.0).abs() < 0.01);
+        assert!(y.abs() < 0.01);
+
+        // Three points, at t=0.5 should be at second point
+        let (x, y) =
+            super::evaluate_path_position(&[[0.0, 0.0], [50.0, 50.0], [100.0, 0.0]], 0.5);
+        assert!((x - 50.0).abs() < 0.01);
+        assert!((y - 50.0).abs() < 0.01);
     }
 }
