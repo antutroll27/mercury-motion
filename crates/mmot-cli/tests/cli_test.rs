@@ -1,4 +1,5 @@
-use std::process::Command;
+use std::io::Write;
+use std::process::{Command, Stdio};
 
 /// Path to the built `mmot` binary.
 fn mmot_bin() -> Command {
@@ -97,5 +98,68 @@ fn validate_text_fade_exits_0() {
         "expected exit 0, got {:?}\nstderr: {}",
         output.status.code(),
         String::from_utf8_lossy(&output.stderr),
+    );
+}
+
+#[test]
+fn repl_help_and_quit() {
+    let mut child = mmot_bin()
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("failed to spawn mmot");
+
+    let mut stdin = child.stdin.take().expect("failed to open stdin");
+    stdin
+        .write_all(b"help\nquit\n")
+        .expect("failed to write to stdin");
+    drop(stdin);
+
+    let output = child.wait_with_output().expect("failed to wait on child");
+
+    assert!(
+        output.status.success(),
+        "expected exit 0, got {:?}\nstderr: {}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("Commands"),
+        "expected stderr to contain 'Commands', got:\n{stderr}",
+    );
+}
+
+#[test]
+fn repl_validate_scene() {
+    let fixture_path = fixture("valid/minimal.mmot.json");
+    let input = format!("validate {fixture_path}\nquit\n");
+
+    let mut child = mmot_bin()
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("failed to spawn mmot");
+
+    let mut stdin = child.stdin.take().expect("failed to open stdin");
+    stdin
+        .write_all(input.as_bytes())
+        .expect("failed to write to stdin");
+    drop(stdin);
+
+    let output = child.wait_with_output().expect("failed to wait on child");
+
+    assert!(
+        output.status.success(),
+        "expected exit 0, got {:?}\nstderr: {}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("Valid"),
+        "expected stderr to contain 'Valid', got:\n{stderr}",
     );
 }
