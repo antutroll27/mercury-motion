@@ -1,9 +1,10 @@
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{AnimatableValue, Vec2};
 
 /// Per-layer transform properties. All fields are animatable.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Transform {
     #[serde(default = "default_center")]
     pub position: AnimatableValue<Vec2>,

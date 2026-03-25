@@ -1,19 +1,20 @@
 use std::collections::HashMap;
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{AnimatableValue, Transform};
 use crate::schema::transition::TransitionSpec;
 
 /// Fill mode for layers — equivalent to Remotion's `<AbsoluteFill>`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum FillMode {
     Parent,
 }
 
 /// A single layer in a composition.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Layer {
     pub id: String,
     /// Frame this layer becomes active (inclusive).
@@ -62,7 +63,7 @@ pub struct Layer {
 }
 
 /// Type-specific layer content, discriminated by the `"type"` JSON field.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum LayerContent {
     Solid {
@@ -114,7 +115,7 @@ fn default_one_anim() -> AnimatableValue<f64> {
 }
 
 /// Font specification for text layers.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct FontSpec {
     pub family: String,
     #[serde(default = "default_font_size")]
@@ -138,7 +139,7 @@ fn default_white() -> String {
 }
 
 /// Text alignment.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum TextAlign {
     Left,
@@ -148,7 +149,7 @@ pub enum TextAlign {
 }
 
 /// Shape specification.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "shape_type", rename_all = "snake_case")]
 pub enum ShapeSpec {
     Rect {
@@ -179,14 +180,14 @@ pub enum ShapeSpec {
 }
 
 /// Stroke specification.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct StrokeSpec {
     pub color: String,
     pub width: f64,
 }
 
 /// Gradient specification — linear or radial.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "gradient_type", rename_all = "snake_case")]
 pub enum GradientSpec {
     Linear {
@@ -202,7 +203,7 @@ pub enum GradientSpec {
 }
 
 /// A single color stop in a gradient.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct GradientStop {
     pub offset: f64,
     pub color: String,
@@ -213,7 +214,7 @@ pub struct GradientStop {
 /// When `sequence` is `true`, layers play back-to-back instead of using their
 /// individual `in`/`out` points for global timing. An optional `transition`
 /// controls overlap between consecutive layers.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Composition {
     pub layers: Vec<Layer>,
     #[serde(default)]

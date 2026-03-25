@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::composition::Compositions;
 
 /// Root scene structure of a `.mmot.json` file.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Scene {
     pub version: String,
     pub meta: Meta,
@@ -17,7 +18,7 @@ pub struct Scene {
 }
 
 /// Video metadata.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Meta {
     pub name: String,
     pub width: u32,
@@ -35,7 +36,7 @@ fn default_black() -> String {
 }
 
 /// Property definition for template variables.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct PropDef {
     #[serde(rename = "type")]
     pub prop_type: PropType,
@@ -43,7 +44,7 @@ pub struct PropDef {
 }
 
 /// Property type.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum PropType {
     String,
@@ -53,14 +54,14 @@ pub enum PropType {
 }
 
 /// External assets referenced by the scene.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 pub struct Assets {
     #[serde(default)]
     pub fonts: Vec<FontAsset>,
 }
 
 /// A font asset reference.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct FontAsset {
     pub id: String,
     pub src: String,

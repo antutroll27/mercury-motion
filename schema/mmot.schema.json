@@ -1,0 +1,1737 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Scene",
+  "description": "Root scene structure of a `.mmot.json` file.",
+  "type": "object",
+  "required": [
+    "compositions",
+    "meta",
+    "version"
+  ],
+  "properties": {
+    "assets": {
+      "default": {
+        "fonts": []
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/Assets"
+        }
+      ]
+    },
+    "compositions": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/Composition"
+      }
+    },
+    "meta": {
+      "$ref": "#/definitions/Meta"
+    },
+    "props": {
+      "default": {},
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/PropDef"
+      }
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "AnimatableValue_for_Vec2": {
+      "description": "A property that can be either a static value or an animated sequence of keyframes.\n\nDisambiguation rule: if the JSON value is an array whose first element is an object with a `\"t\"` field, it is a keyframe array. Otherwise it is a static value.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "Static"
+          ],
+          "properties": {
+            "Static": {
+              "$ref": "#/definitions/Vec2"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "Animated"
+          ],
+          "properties": {
+            "Animated": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Keyframe_for_Vec2"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "AnimatableValue_for_double": {
+      "description": "A property that can be either a static value or an animated sequence of keyframes.\n\nDisambiguation rule: if the JSON value is an array whose first element is an object with a `\"t\"` field, it is a keyframe array. Otherwise it is a static value.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "Static"
+          ],
+          "properties": {
+            "Static": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "Animated"
+          ],
+          "properties": {
+            "Animated": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Keyframe_for_double"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Assets": {
+      "description": "External assets referenced by the scene.",
+      "type": "object",
+      "properties": {
+        "fonts": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FontAsset"
+          }
+        }
+      }
+    },
+    "BlendMode": {
+      "description": "Compositing blend mode for a layer, matching After Effects blend modes.",
+      "type": "string",
+      "enum": [
+        "normal",
+        "multiply",
+        "screen",
+        "overlay",
+        "darken",
+        "lighten",
+        "color_dodge",
+        "color_burn",
+        "hard_light",
+        "soft_light",
+        "difference",
+        "exclusion",
+        "add"
+      ]
+    },
+    "Composition": {
+      "description": "A composition — an ordered list of layers (first = bottom of visual stack).\n\nWhen `sequence` is `true`, layers play back-to-back instead of using their individual `in`/`out` points for global timing. An optional `transition` controls overlap between consecutive layers.",
+      "type": "object",
+      "required": [
+        "layers"
+      ],
+      "properties": {
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Layer"
+          }
+        },
+        "sequence": {
+          "default": false,
+          "type": "boolean"
+        },
+        "transition": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/TransitionSpec"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "CubicBezierTag": {
+      "type": "string",
+      "enum": [
+        "cubic_bezier"
+      ]
+    },
+    "EasingValue": {
+      "description": "Easing curve for keyframe interpolation. Applied from the keyframe it is attached to toward the next keyframe. Ignored on the final keyframe.",
+      "anyOf": [
+        {
+          "description": "A named easing preset.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/NamedEasing"
+            }
+          ]
+        },
+        {
+          "description": "A custom cubic Bezier curve.",
+          "type": "object",
+          "required": [
+            "type",
+            "x1",
+            "x2",
+            "y1",
+            "y2"
+          ],
+          "properties": {
+            "type": {
+              "$ref": "#/definitions/CubicBezierTag"
+            },
+            "x1": {
+              "type": "number",
+              "format": "double"
+            },
+            "x2": {
+              "type": "number",
+              "format": "double"
+            },
+            "y1": {
+              "type": "number",
+              "format": "double"
+            },
+            "y2": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        },
+        {
+          "description": "A spring physics easing (damped harmonic oscillator).",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "damping": {
+              "default": 10.0,
+              "type": "number",
+              "format": "double"
+            },
+            "mass": {
+              "default": 1.0,
+              "type": "number",
+              "format": "double"
+            },
+            "stiffness": {
+              "default": 100.0,
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "$ref": "#/definitions/SpringTag"
+            }
+          }
+        }
+      ]
+    },
+    "Effect": {
+      "description": "A visual effect applied to a layer, matching common After Effects effects.",
+      "oneOf": [
+        {
+          "description": "Gaussian blur with configurable radius.",
+          "type": "object",
+          "required": [
+            "radius",
+            "type"
+          ],
+          "properties": {
+            "radius": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "gaussian_blur"
+              ]
+            }
+          }
+        },
+        {
+          "description": "Drop shadow cast behind the layer.",
+          "type": "object",
+          "required": [
+            "blur",
+            "color",
+            "offset_x",
+            "offset_y",
+            "type"
+          ],
+          "properties": {
+            "blur": {
+              "type": "number",
+              "format": "double"
+            },
+            "color": {
+              "type": "string"
+            },
+            "offset_x": {
+              "type": "number",
+              "format": "double"
+            },
+            "offset_y": {
+              "type": "number",
+              "format": "double"
+            },
+            "opacity": {
+              "default": 1.0,
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "drop_shadow"
+              ]
+            }
+          }
+        },
+        {
+          "description": "Glow effect emanating from bright regions.",
+          "type": "object",
+          "required": [
+            "color",
+            "radius",
+            "type"
+          ],
+          "properties": {
+            "color": {
+              "type": "string"
+            },
+            "intensity": {
+              "default": 1.0,
+              "type": "number",
+              "format": "double"
+            },
+            "radius": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "glow"
+              ]
+            }
+          }
+        },
+        {
+          "description": "Brightness and contrast adjustment.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "brightness": {
+              "default": 0.0,
+              "type": "number",
+              "format": "double"
+            },
+            "contrast": {
+              "default": 0.0,
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "brightness_contrast"
+              ]
+            }
+          }
+        },
+        {
+          "description": "Hue, saturation, and lightness adjustment.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "hue": {
+              "default": 0.0,
+              "type": "number",
+              "format": "double"
+            },
+            "lightness": {
+              "default": 0.0,
+              "type": "number",
+              "format": "double"
+            },
+            "saturation": {
+              "default": 0.0,
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "hue_saturation"
+              ]
+            }
+          }
+        },
+        {
+          "description": "Inverts all color channels.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "invert"
+              ]
+            }
+          }
+        },
+        {
+          "description": "Tints the layer toward a target color.",
+          "type": "object",
+          "required": [
+            "color",
+            "type"
+          ],
+          "properties": {
+            "amount": {
+              "default": 1.0,
+              "type": "number",
+              "format": "double"
+            },
+            "color": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "tint"
+              ]
+            }
+          }
+        },
+        {
+          "description": "Fills the entire layer with a solid color.",
+          "type": "object",
+          "required": [
+            "color",
+            "type"
+          ],
+          "properties": {
+            "color": {
+              "type": "string"
+            },
+            "opacity": {
+              "default": 1.0,
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "fill"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "FillMode": {
+      "description": "Fill mode for layers — equivalent to Remotion's `<AbsoluteFill>`.",
+      "type": "string",
+      "enum": [
+        "parent"
+      ]
+    },
+    "FontAsset": {
+      "description": "A font asset reference.",
+      "type": "object",
+      "required": [
+        "id",
+        "src"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "src": {
+          "type": "string"
+        }
+      }
+    },
+    "FontSpec": {
+      "description": "Font specification for text layers.",
+      "type": "object",
+      "required": [
+        "family"
+      ],
+      "properties": {
+        "color": {
+          "default": "#ffffff",
+          "type": "string"
+        },
+        "family": {
+          "type": "string"
+        },
+        "size": {
+          "default": 32.0,
+          "type": "number",
+          "format": "double"
+        },
+        "weight": {
+          "default": 400,
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      }
+    },
+    "GradientSpec": {
+      "description": "Gradient specification — linear or radial.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "colors",
+            "end",
+            "gradient_type",
+            "start"
+          ],
+          "properties": {
+            "colors": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/GradientStop"
+              }
+            },
+            "end": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "gradient_type": {
+              "type": "string",
+              "enum": [
+                "linear"
+              ]
+            },
+            "start": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "maxItems": 2,
+              "minItems": 2
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "center",
+            "colors",
+            "gradient_type",
+            "radius"
+          ],
+          "properties": {
+            "center": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "colors": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/GradientStop"
+              }
+            },
+            "gradient_type": {
+              "type": "string",
+              "enum": [
+                "radial"
+              ]
+            },
+            "radius": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        }
+      ]
+    },
+    "GradientStop": {
+      "description": "A single color stop in a gradient.",
+      "type": "object",
+      "required": [
+        "color",
+        "offset"
+      ],
+      "properties": {
+        "color": {
+          "type": "string"
+        },
+        "offset": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "Keyframe_for_Vec2": {
+      "description": "A single keyframe.",
+      "type": "object",
+      "required": [
+        "t",
+        "v"
+      ],
+      "properties": {
+        "easing": {
+          "description": "Easing from this keyframe to the next. Ignored on the final keyframe.",
+          "default": "linear",
+          "allOf": [
+            {
+              "$ref": "#/definitions/EasingValue"
+            }
+          ]
+        },
+        "t": {
+          "description": "Frame number (integer).",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "v": {
+          "description": "Value at this keyframe.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Vec2"
+            }
+          ]
+        }
+      }
+    },
+    "Keyframe_for_double": {
+      "description": "A single keyframe.",
+      "type": "object",
+      "required": [
+        "t",
+        "v"
+      ],
+      "properties": {
+        "easing": {
+          "description": "Easing from this keyframe to the next. Ignored on the final keyframe.",
+          "default": "linear",
+          "allOf": [
+            {
+              "$ref": "#/definitions/EasingValue"
+            }
+          ]
+        },
+        "t": {
+          "description": "Frame number (integer).",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "v": {
+          "description": "Value at this keyframe.",
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "Layer": {
+      "description": "A single layer in a composition.",
+      "type": "object",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "color",
+            "type"
+          ],
+          "properties": {
+            "color": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "solid"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "src",
+            "type"
+          ],
+          "properties": {
+            "src": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "image"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "src",
+            "type"
+          ],
+          "properties": {
+            "src": {
+              "type": "string"
+            },
+            "trim_end": {
+              "default": null,
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            },
+            "trim_start": {
+              "default": 0.0,
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "video"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "font",
+            "text",
+            "type"
+          ],
+          "properties": {
+            "align": {
+              "default": "center",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/TextAlign"
+                }
+              ]
+            },
+            "font": {
+              "$ref": "#/definitions/FontSpec"
+            },
+            "text": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "text"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "src",
+            "type"
+          ],
+          "properties": {
+            "src": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "audio"
+              ]
+            },
+            "volume": {
+              "default": {
+                "Static": 1.0
+              },
+              "allOf": [
+                {
+                  "$ref": "#/definitions/AnimatableValue_for_double"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "src",
+            "type"
+          ],
+          "properties": {
+            "src": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "lottie"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "composition_id",
+            "type"
+          ],
+          "properties": {
+            "composition_id": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "composition"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "shape",
+            "type"
+          ],
+          "properties": {
+            "shape": {
+              "$ref": "#/definitions/ShapeSpec"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "shape"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "gradient",
+            "type"
+          ],
+          "properties": {
+            "gradient": {
+              "$ref": "#/definitions/GradientSpec"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "gradient"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "null"
+              ]
+            }
+          }
+        }
+      ],
+      "required": [
+        "id",
+        "in",
+        "out",
+        "transform"
+      ],
+      "properties": {
+        "adjustment": {
+          "default": false,
+          "type": "boolean"
+        },
+        "blend_mode": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/BlendMode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "effects": {
+          "default": null,
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Effect"
+          }
+        },
+        "fill": {
+          "description": "When set to `\"parent\"`, the layer fills the entire canvas (position/rotation/scale ignored).",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/FillMode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "in": {
+          "description": "Frame this layer becomes active (inclusive).",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "masks": {
+          "default": null,
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Mask"
+          }
+        },
+        "motion_blur": {
+          "default": false,
+          "type": "boolean"
+        },
+        "out": {
+          "description": "Frame this layer becomes inactive (exclusive).",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "parent": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path_animation": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/PathAnimation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "time_remap": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/TimeRemap"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "track_matte": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/TrackMatte"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "transform": {
+          "$ref": "#/definitions/Transform"
+        },
+        "trim_paths": {
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/TrimPaths"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Mask": {
+      "description": "A mask applied to a layer, defining a clipping/compositing region.",
+      "type": "object",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "feather": {
+          "description": "Feather radius in pixels for softening the mask edge.",
+          "default": 0.0,
+          "type": "number",
+          "format": "double"
+        },
+        "inverted": {
+          "description": "When true, the mask region is inverted.",
+          "default": false,
+          "type": "boolean"
+        },
+        "mode": {
+          "description": "How this mask combines with other masks on the same layer.",
+          "default": "add",
+          "allOf": [
+            {
+              "$ref": "#/definitions/MaskMode"
+            }
+          ]
+        },
+        "opacity": {
+          "description": "Opacity of the mask (0.0 = fully transparent, 1.0 = fully opaque).",
+          "default": 1.0,
+          "type": "number",
+          "format": "double"
+        },
+        "path": {
+          "description": "The geometric path defining the mask shape.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/MaskPath"
+            }
+          ]
+        }
+      }
+    },
+    "MaskMode": {
+      "description": "How a mask combines with other masks on the same layer.",
+      "type": "string",
+      "enum": [
+        "add",
+        "subtract",
+        "intersect",
+        "difference"
+      ]
+    },
+    "MaskPath": {
+      "description": "Geometric path for a mask.",
+      "oneOf": [
+        {
+          "description": "A rectangular mask region.",
+          "type": "object",
+          "required": [
+            "height",
+            "type",
+            "width",
+            "x",
+            "y"
+          ],
+          "properties": {
+            "corner_radius": {
+              "default": 0.0,
+              "type": "number",
+              "format": "double"
+            },
+            "height": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "rect"
+              ]
+            },
+            "width": {
+              "type": "number",
+              "format": "double"
+            },
+            "x": {
+              "type": "number",
+              "format": "double"
+            },
+            "y": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        },
+        {
+          "description": "An elliptical mask region.",
+          "type": "object",
+          "required": [
+            "cx",
+            "cy",
+            "rx",
+            "ry",
+            "type"
+          ],
+          "properties": {
+            "cx": {
+              "type": "number",
+              "format": "double"
+            },
+            "cy": {
+              "type": "number",
+              "format": "double"
+            },
+            "rx": {
+              "type": "number",
+              "format": "double"
+            },
+            "ry": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "ellipse"
+              ]
+            }
+          }
+        },
+        {
+          "description": "A freeform path mask defined by control points.",
+          "type": "object",
+          "required": [
+            "points",
+            "type"
+          ],
+          "properties": {
+            "closed": {
+              "default": false,
+              "type": "boolean"
+            },
+            "points": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "format": "double"
+                },
+                "maxItems": 2,
+                "minItems": 2
+              }
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "path"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "Meta": {
+      "description": "Video metadata.",
+      "type": "object",
+      "required": [
+        "duration",
+        "fps",
+        "height",
+        "name",
+        "root",
+        "width"
+      ],
+      "properties": {
+        "background": {
+          "default": "#000000",
+          "type": "string"
+        },
+        "duration": {
+          "description": "Duration in frames.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "fps": {
+          "type": "number",
+          "format": "double"
+        },
+        "height": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "name": {
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      }
+    },
+    "NamedEasing": {
+      "type": "string",
+      "enum": [
+        "linear",
+        "ease_in",
+        "ease_out",
+        "ease_in_out"
+      ]
+    },
+    "PathAnimation": {
+      "description": "Animates the position of a layer along a path defined by control points.",
+      "type": "object",
+      "required": [
+        "points"
+      ],
+      "properties": {
+        "auto_orient": {
+          "description": "When true, the layer's rotation follows the tangent of the path.",
+          "default": false,
+          "type": "boolean"
+        },
+        "points": {
+          "description": "Control points defining the motion path.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "maxItems": 2,
+            "minItems": 2
+          }
+        }
+      }
+    },
+    "PropDef": {
+      "description": "Property definition for template variables.",
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "default": true,
+        "type": {
+          "$ref": "#/definitions/PropType"
+        }
+      }
+    },
+    "PropType": {
+      "description": "Property type.",
+      "type": "string",
+      "enum": [
+        "string",
+        "color",
+        "number",
+        "url"
+      ]
+    },
+    "ShapeSpec": {
+      "description": "Shape specification.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "height",
+            "shape_type",
+            "width"
+          ],
+          "properties": {
+            "corner_radius": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            },
+            "fill": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "height": {
+              "type": "number",
+              "format": "double"
+            },
+            "shape_type": {
+              "type": "string",
+              "enum": [
+                "rect"
+              ]
+            },
+            "stroke": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/StrokeSpec"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "width": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "height",
+            "shape_type",
+            "width"
+          ],
+          "properties": {
+            "fill": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "height": {
+              "type": "number",
+              "format": "double"
+            },
+            "shape_type": {
+              "type": "string",
+              "enum": [
+                "ellipse"
+              ]
+            },
+            "stroke": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/StrokeSpec"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "width": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "shape_type",
+            "stroke",
+            "x1",
+            "x2",
+            "y1",
+            "y2"
+          ],
+          "properties": {
+            "shape_type": {
+              "type": "string",
+              "enum": [
+                "line"
+              ]
+            },
+            "stroke": {
+              "$ref": "#/definitions/StrokeSpec"
+            },
+            "x1": {
+              "type": "number",
+              "format": "double"
+            },
+            "x2": {
+              "type": "number",
+              "format": "double"
+            },
+            "y1": {
+              "type": "number",
+              "format": "double"
+            },
+            "y2": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "points",
+            "shape_type"
+          ],
+          "properties": {
+            "fill": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "points": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "format": "double"
+                },
+                "maxItems": 2,
+                "minItems": 2
+              }
+            },
+            "shape_type": {
+              "type": "string",
+              "enum": [
+                "polygon"
+              ]
+            },
+            "stroke": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/StrokeSpec"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "SpringTag": {
+      "type": "string",
+      "enum": [
+        "spring"
+      ]
+    },
+    "StrokeSpec": {
+      "description": "Stroke specification.",
+      "type": "object",
+      "required": [
+        "color",
+        "width"
+      ],
+      "properties": {
+        "color": {
+          "type": "string"
+        },
+        "width": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "TextAlign": {
+      "description": "Text alignment.",
+      "type": "string",
+      "enum": [
+        "left",
+        "center",
+        "right"
+      ]
+    },
+    "TimeRemap": {
+      "description": "Time remapping controls for a layer.",
+      "type": "object",
+      "properties": {
+        "offset": {
+          "description": "Time offset in seconds.",
+          "default": 0.0,
+          "type": "number",
+          "format": "double"
+        },
+        "reverse": {
+          "description": "Whether to play the layer in reverse.",
+          "default": false,
+          "type": "boolean"
+        },
+        "speed": {
+          "description": "Playback speed multiplier (1.0 = normal speed).",
+          "default": 1.0,
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "TrackMatte": {
+      "description": "A track matte uses another layer's alpha or luma channel to define visibility.",
+      "type": "object",
+      "required": [
+        "source"
+      ],
+      "properties": {
+        "mode": {
+          "description": "Which channel of the source layer drives the matte.",
+          "default": "alpha",
+          "allOf": [
+            {
+              "$ref": "#/definitions/TrackMatteMode"
+            }
+          ]
+        },
+        "source": {
+          "description": "ID of the source layer used as the matte.",
+          "type": "string"
+        }
+      }
+    },
+    "TrackMatteMode": {
+      "description": "Which channel of the matte source layer drives visibility.",
+      "type": "string",
+      "enum": [
+        "alpha",
+        "alpha_inverted",
+        "luma",
+        "luma_inverted"
+      ]
+    },
+    "Transform": {
+      "description": "Per-layer transform properties. All fields are animatable.",
+      "type": "object",
+      "properties": {
+        "opacity": {
+          "default": {
+            "Static": 1.0
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/AnimatableValue_for_double"
+            }
+          ]
+        },
+        "position": {
+          "default": {
+            "Static": {
+              "x": 0.0,
+              "y": 0.0
+            }
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/AnimatableValue_for_Vec2"
+            }
+          ]
+        },
+        "rotation": {
+          "default": {
+            "Static": 0.0
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/AnimatableValue_for_double"
+            }
+          ]
+        },
+        "scale": {
+          "default": {
+            "Static": {
+              "x": 1.0,
+              "y": 1.0
+            }
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/AnimatableValue_for_Vec2"
+            }
+          ]
+        }
+      }
+    },
+    "TransitionSpec": {
+      "description": "Transition specification for sequence mode. Defines how consecutive layers overlap during playback.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "duration",
+            "type"
+          ],
+          "properties": {
+            "duration": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "crossfade"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "direction",
+            "duration",
+            "type"
+          ],
+          "properties": {
+            "direction": {
+              "$ref": "#/definitions/WipeDirection"
+            },
+            "duration": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "wipe"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "direction",
+            "duration",
+            "type"
+          ],
+          "properties": {
+            "direction": {
+              "$ref": "#/definitions/WipeDirection"
+            },
+            "duration": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "slide"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "TrimPaths": {
+      "description": "Trim paths controls for shape layers — animates which portion of a path is visible.",
+      "type": "object",
+      "properties": {
+        "end": {
+          "description": "End of the visible portion (0.0 to 1.0).",
+          "default": {
+            "Static": 1.0
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/AnimatableValue_for_double"
+            }
+          ]
+        },
+        "offset": {
+          "description": "Offset rotates the start/end along the path (0.0 to 1.0).",
+          "default": {
+            "Static": 0.0
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/AnimatableValue_for_double"
+            }
+          ]
+        },
+        "start": {
+          "description": "Start of the visible portion (0.0 to 1.0).",
+          "default": {
+            "Static": 0.0
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/AnimatableValue_for_double"
+            }
+          ]
+        }
+      }
+    },
+    "Vec2": {
+      "description": "A 2D vector value.",
+      "type": "object",
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "type": "number",
+          "format": "double"
+        },
+        "y": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "WipeDirection": {
+      "description": "Direction for wipe and slide transitions.",
+      "type": "string",
+      "enum": [
+        "left",
+        "right",
+        "up",
+        "down"
+      ]
+    }
+  }
+}
