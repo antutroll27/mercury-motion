@@ -1,3 +1,4 @@
+mod completer;
 mod ui;
 
 use std::collections::HashMap;
