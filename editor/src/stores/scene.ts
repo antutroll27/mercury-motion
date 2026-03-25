@@ -142,12 +142,14 @@ export const useSceneStore = defineStore('scene', () => {
   // --- Scene mutations ---
 
   function addLayer(layer: Layer) {
+    if (!rootComposition.value) return
     rootComposition.value.layers.push(layer)
     schedulePreview()
   }
 
   function removeLayer(id: string) {
     const comp = rootComposition.value
+    if (!comp) return
     comp.layers = comp.layers.filter(l => l.id !== id)
     if (selectedLayerId.value === id) selectedLayerId.value = null
     schedulePreview()
@@ -155,6 +157,7 @@ export const useSceneStore = defineStore('scene', () => {
 
   function reorderLayer(fromIndex: number, toIndex: number) {
     const comp = rootComposition.value
+    if (!comp) return
     if (fromIndex < 0 || fromIndex >= comp.layers.length) return
     if (toIndex < 0 || toIndex >= comp.layers.length) return
     const [moved] = comp.layers.splice(fromIndex, 1)
@@ -178,6 +181,7 @@ export const useSceneStore = defineStore('scene', () => {
     let obj: any = layer
     for (let i = 0; i < keys.length - 1; i++) {
       obj = obj[keys[i]]
+      if (obj == null || typeof obj !== 'object') return
     }
     obj[keys[keys.length - 1]] = value
     schedulePreview()

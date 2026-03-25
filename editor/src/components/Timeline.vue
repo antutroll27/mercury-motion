@@ -1,8 +1,15 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import { useSceneStore } from '../stores/scene'
 
 const store = useSceneStore()
+
+onBeforeUnmount(() => {
+  window.removeEventListener('mousemove', handleScrubMove)
+  window.removeEventListener('mouseup', handleScrubEnd)
+  window.removeEventListener('mousemove', handleLayerDragMove)
+  window.removeEventListener('mouseup', handleLayerDragEnd)
+})
 const timelineRef = ref<HTMLDivElement | null>(null)
 const isScrubbing = ref(false)
 const isDragOver = ref(false)
@@ -81,7 +88,8 @@ function handleTimelineDrop(e: DragEvent) {
   const mediaData = e.dataTransfer?.getData('application/mmot-media')
   if (!mediaData) return
 
-  const asset = JSON.parse(mediaData)
+  let asset: any
+  try { asset = JSON.parse(mediaData) } catch { return }
   const id = `${asset.type}_${Date.now().toString(36)}`
   const w = store.scene.meta.width
   const h = store.scene.meta.height

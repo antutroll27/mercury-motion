@@ -49,7 +49,8 @@ function handleDrop(event: DragEvent, displayIndex: number) {
   // Check if it's a media drop from the media browser
   const mediaData = event.dataTransfer?.getData('application/mmot-media')
   if (mediaData) {
-    const asset = JSON.parse(mediaData)
+    let asset: any
+    try { asset = JSON.parse(mediaData) } catch { return }
     const id = `${asset.type}_${Date.now().toString(36)}`
     const w = store.scene.meta.width
     const h = store.scene.meta.height
@@ -127,7 +128,7 @@ function handlePanelDrop(event: DragEvent) {
       <div
         v-for="(layer, displayIdx) in reversedLayers"
         :key="layer.id"
-        class="flex items-center gap-2 px-3 py-2 cursor-grab active:cursor-grabbing border-b transition-colors"
+        class="group flex items-center gap-2 px-3 py-2 cursor-grab active:cursor-grabbing border-b transition-colors"
         :class="[
           layer.id === store.selectedLayerId
             ? 'bg-crimson/10 border-l-2 border-l-crimson border-b-cosmos-border/50'
