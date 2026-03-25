@@ -1,6 +1,7 @@
 pub mod animatable;
 pub mod composition;
 pub mod easing;
+pub mod effects;
 pub mod scene;
 pub mod transform;
 pub mod transition;
@@ -11,6 +12,10 @@ pub use composition::{
     ShapeSpec, StrokeSpec, TextAlign,
 };
 pub use easing::EasingValue;
+pub use effects::{
+    BlendMode, Effect, Mask, MaskMode, MaskPath, PathAnimation, TimeRemap, TrackMatte,
+    TrackMatteMode, TrimPaths,
+};
 pub use scene::{Assets, Meta, PropDef, PropType, Scene};
 pub use transform::Transform;
 pub use transition::{TransitionSpec, WipeDirection};

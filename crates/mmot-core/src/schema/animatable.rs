@@ -1,10 +1,11 @@
+use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::schema::EasingValue;
 
 /// A 2D vector value.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Vec2 {
     pub x: f64,
     pub y: f64,
@@ -17,7 +18,7 @@ impl From<[f64; 2]> for Vec2 {
 }
 
 /// A single keyframe.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Keyframe<T> {
     /// Frame number (integer).
     pub t: u64,
@@ -33,7 +34,7 @@ pub struct Keyframe<T> {
 /// Disambiguation rule: if the JSON value is an array whose first element
 /// is an object with a `"t"` field, it is a keyframe array. Otherwise it is
 /// a static value.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub enum AnimatableValue<T> {
     Static(T),
     Animated(Vec<Keyframe<T>>),
