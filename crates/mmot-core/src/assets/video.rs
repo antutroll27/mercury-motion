@@ -86,10 +86,26 @@ pub fn decode_frame(path: &Path, timestamp_secs: f64) -> Result<DecodedVideoFram
             // Copy RGBA data accounting for stride/padding
             let stride = rgba_frame.stride(0);
             let data = rgba_frame.data(0);
+            let row_bytes = width as usize * 4;
+
+            if stride < row_bytes {
+                return Err(MmotError::VideoDecode(format!(
+                    "invalid stride: {stride} < {row_bytes} for width {width}"
+                )));
+            }
+
+            let required = (height as usize - 1) * stride + row_bytes;
+            if data.len() < required {
+                return Err(MmotError::VideoDecode(format!(
+                    "frame buffer too small: {} < {required}",
+                    data.len()
+                )));
+            }
+
             let mut rgba = Vec::with_capacity((width * height * 4) as usize);
             for row in 0..height as usize {
                 let row_start = row * stride;
-                let row_end = row_start + (width as usize * 4);
+                let row_end = row_start + row_bytes;
                 rgba.extend_from_slice(&data[row_start..row_end]);
             }
 

@@ -72,11 +72,15 @@ fn rgba_to_yuv420(rgba: &[u8], width: u32, height: u32, frame: &mut rav1e::prelu
     let w = width as usize;
     let h = height as usize;
     let expected = w * h * 4;
-    debug_assert!(
-        rgba.len() >= expected,
-        "RGBA buffer too small: {} < {} ({}x{}x4)",
-        rgba.len(), expected, w, h
-    );
+    // Bounds check: if the buffer is too small, fill with black (Y=0, U/V=128)
+    // rather than panicking. This can happen with malformed frames.
+    if rgba.len() < expected {
+        tracing::error!(
+            "RGBA buffer too small: {} < {} ({}x{}x4), filling with black",
+            rgba.len(), expected, w, h
+        );
+        return;
+    }
 
     // Write Y plane
     {
