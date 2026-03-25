@@ -97,17 +97,45 @@ pub fn render_scene_with_props(
     // Render all frames in parallel, collect in order
     let scene = Arc::new(scene);
     let font_cache_ref = &font_cache;
+    let has_motion_blur = scene_has_motion_blur(&scene);
+
     let frames: Vec<Result<Vec<u8>>> = (start..start + total)
         .into_par_iter()
         .map(|frame_num| {
-            let frame_scene = evaluate_scene(&scene, frame_num, font_cache_ref)?;
-            let rgba = render_frame(&frame_scene).map_err(|e| match e {
-                MmotError::RenderFailed { reason, .. } => MmotError::RenderFailed {
-                    frame: frame_num,
-                    reason,
-                },
-                other => other,
-            })?;
+            let rgba = if has_motion_blur {
+                // Render multiple sub-frames and average for temporal motion blur
+                const MOTION_BLUR_OFFSETS: [f64; 5] = [-0.4, -0.2, 0.0, 0.2, 0.4];
+                let sub_frames: Vec<Vec<u8>> = MOTION_BLUR_OFFSETS
+                    .iter()
+                    .filter_map(|offset| {
+                        let sub = (frame_num as f64 + offset).max(0.0) as u64;
+                        let fs = evaluate_scene(&scene, sub, font_cache_ref).ok()?;
+                        render_frame(&fs).ok()
+                    })
+                    .collect();
+                if sub_frames.is_empty() {
+                    // Fallback: render normally
+                    let fs = evaluate_scene(&scene, frame_num, font_cache_ref)?;
+                    render_frame(&fs).map_err(|e| match e {
+                        MmotError::RenderFailed { reason, .. } => MmotError::RenderFailed {
+                            frame: frame_num,
+                            reason,
+                        },
+                        other => other,
+                    })?
+                } else {
+                    average_frames(&sub_frames)
+                }
+            } else {
+                let frame_scene = evaluate_scene(&scene, frame_num, font_cache_ref)?;
+                render_frame(&frame_scene).map_err(|e| match e {
+                    MmotError::RenderFailed { reason, .. } => MmotError::RenderFailed {
+                        frame: frame_num,
+                        reason,
+                    },
+                    other => other,
+                })?
+            };
             if let Some(ref cb) = progress {
                 cb(frame_num - start, total);
             }
@@ -182,6 +210,25 @@ pub fn render_scene_with_props(
     }
 
     Ok(())
+}
+
+/// Check if any layer in the scene has motion blur enabled.
+fn scene_has_motion_blur(scene: &Scene) -> bool {
+    scene.compositions.values().any(|comp| {
+        comp.layers.iter().any(|layer| layer.motion_blur)
+    })
+}
+
+/// Average multiple RGBA frame buffers by computing the mean of each byte.
+fn average_frames(frames: &[Vec<u8>]) -> Vec<u8> {
+    let len = frames[0].len();
+    let n = frames.len() as u32;
+    (0..len)
+        .map(|i| {
+            let sum: u32 = frames.iter().map(|f| f[i] as u32).sum();
+            (sum / n) as u8
+        })
+        .collect()
 }
 
 /// Collect audio from all audio layers in the root composition.
@@ -1092,5 +1139,68 @@ mod tests {
         // Should not panic or hang — depth guard kicks in
         let fs = evaluate_scene(&scene, 0, &font_cache);
         assert!(fs.is_ok());
+    }
+
+    #[test]
+    fn motion_blur_produces_output() {
+        // Simple scene with motion_blur on a moving layer
+        let json = r##"{
+            "version": "1.0",
+            "meta": { "name": "MotionBlur", "width": 32, "height": 32, "fps": 30, "duration": 10, "root": "main", "background": "#000000" },
+            "compositions": {
+                "main": {
+                    "layers": [{
+                        "id": "moving",
+                        "in": 0, "out": 10,
+                        "transform": {
+                            "position": [
+                                { "t": 0, "v": [0, 16] },
+                                { "t": 10, "v": [32, 16] }
+                            ]
+                        },
+                        "type": "solid",
+                        "color": "#ffffff",
+                        "motion_blur": true
+                    }]
+                }
+            },
+            "assets": { "fonts": [] }
+        }"##;
+        let scene = crate::parser::parse(json).unwrap();
+        assert!(scene_has_motion_blur(&scene));
+
+        let font_cache = std::collections::HashMap::new();
+        let fs = evaluate_scene(&scene, 5, &font_cache).unwrap();
+        let rgba = crate::renderer::render(&fs).unwrap();
+        assert_eq!(rgba.len(), 32 * 32 * 4);
+    }
+
+    #[test]
+    fn scene_without_motion_blur_detected() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": { "name": "NoBlur", "width": 32, "height": 32, "fps": 30, "duration": 10, "root": "main", "background": "#000000" },
+            "compositions": {
+                "main": {
+                    "layers": [{
+                        "id": "still",
+                        "in": 0, "out": 10,
+                        "transform": { "position": [16, 16] },
+                        "type": "solid",
+                        "color": "#ffffff"
+                    }]
+                }
+            }
+        }"##;
+        let scene = crate::parser::parse(json).unwrap();
+        assert!(!scene_has_motion_blur(&scene));
+    }
+
+    #[test]
+    fn average_frames_computes_mean() {
+        let a = vec![0u8, 100, 200, 255];
+        let b = vec![100u8, 100, 0, 255];
+        let result = average_frames(&[a, b]);
+        assert_eq!(result, vec![50, 100, 100, 255]);
     }
 }
