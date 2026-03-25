@@ -399,3 +399,63 @@ pub fn run_repl() {
     ui::print_step("●", "Goodbye", "— happy rendering!");
     eprintln!();
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io::Write;
+
+    #[test]
+    fn tokenize_simple_render_command() {
+        let tokens = shell_words::split("render scene.mmot.json --quality 90").unwrap();
+        assert_eq!(tokens, vec!["render", "scene.mmot.json", "--quality", "90"]);
+    }
+
+    #[test]
+    fn tokenize_quoted_prop() {
+        let tokens =
+            shell_words::split(r#"render scene.mmot.json --prop "title=Hello World""#).unwrap();
+        assert_eq!(
+            tokens,
+            vec!["render", "scene.mmot.json", "--prop", "title=Hello World"]
+        );
+    }
+
+    #[test]
+    fn tokenize_empty_input() {
+        let tokens = shell_words::split("").unwrap();
+        assert!(tokens.is_empty());
+    }
+
+    #[test]
+    fn scan_finds_mmot_files_in_temp_dir() {
+        let dir = tempfile::TempDir::new().unwrap();
+
+        let mmot_path = dir.path().join("scene.mmot.json");
+        let mut f = std::fs::File::create(&mmot_path).unwrap();
+        f.write_all(
+            br##"{"meta":{"name":"Test","width":100,"height":100,"fps":30,"duration":10,"background":"#000","root":"main"},"compositions":{"main":{"layers":[]}}}"##,
+        )
+        .unwrap();
+        drop(f);
+
+        let txt_path = dir.path().join("notes.txt");
+        std::fs::write(&txt_path, b"not a scene file").unwrap();
+
+        let mmot_files: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.file_name()
+                    .to_string_lossy()
+                    .ends_with(".mmot.json")
+            })
+            .collect();
+
+        assert_eq!(
+            mmot_files.len(),
+            1,
+            "expected exactly 1 .mmot.json file, found {}",
+            mmot_files.len()
+        );
+    }
+}
