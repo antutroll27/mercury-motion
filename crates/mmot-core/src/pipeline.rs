@@ -578,6 +578,8 @@ fn evaluate_composition(
             blend_mode: layer.blend_mode.clone(),
             masks: layer.masks.clone(),
             effects: layer.effects.clone(),
+            adjustment: layer.adjustment,
+            track_matte_source: layer.track_matte.as_ref().map(|tm| tm.source.clone()),
         });
     }
 

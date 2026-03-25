@@ -35,6 +35,11 @@ pub struct ResolvedLayer {
     pub masks: Option<Vec<crate::schema::effects::Mask>>,
     /// Optional visual effects (blur, shadow, color correction, etc.).
     pub effects: Option<Vec<crate::schema::effects::Effect>>,
+    /// When `true`, this layer acts as an adjustment layer — its effects apply
+    /// to everything already composited below it rather than drawing content.
+    pub adjustment: bool,
+    /// If set, the layer ID of a track matte source (stub — not yet rendered).
+    pub track_matte_source: Option<String>,
 }
 
 /// Resolved transform values (no keyframes).
@@ -80,14 +85,32 @@ pub fn render(frame_scene: &FrameScene) -> Result<Vec<u8>> {
     let w = frame_scene.width;
     let h = frame_scene.height;
     let mut surface = surface::create_cpu_surface(w, h);
-    let canvas = surface.canvas();
+    let bg = parse_color(&frame_scene.background);
 
     // Clear with background colour
-    canvas.clear(parse_color(&frame_scene.background));
+    surface.canvas().clear(bg);
 
     // Draw layers in order (first = bottom of visual stack)
     for layer in &frame_scene.layers {
-        layers::draw_layer(canvas, layer, w, h);
+        if layer.adjustment {
+            // Adjustment layer: apply its effects to everything drawn so far
+            if let Some(ref effects_list) = layer.effects
+                && !effects_list.is_empty()
+                && let Some(filter) = crate::renderer::effects::build_image_filter(effects_list)
+            {
+                // Snapshot the current composited image, clear, and redraw
+                // with the adjustment effect applied.
+                let snapshot = surface.image_snapshot();
+                surface.canvas().clear(parse_color(&frame_scene.background));
+                let mut adj_paint = skia_safe::Paint::default();
+                adj_paint.set_image_filter(filter);
+                surface
+                    .canvas()
+                    .draw_image(&snapshot, (0, 0), Some(&adj_paint));
+            }
+            continue; // Don't draw the adjustment layer itself
+        }
+        layers::draw_layer(surface.canvas(), layer, w, h);
     }
 
     // Extract RGBA pixels directly — no PNG roundtrip
@@ -141,6 +164,8 @@ mod tests {
                 blend_mode: None,
                 masks: None,
                 effects: None,
+                adjustment: false,
+                track_matte_source: None,
             }],
         }
     }
@@ -191,6 +216,8 @@ mod tests {
                 blend_mode: None,
                 masks: None,
                 effects: None,
+                adjustment: false,
+                track_matte_source: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -228,6 +255,8 @@ mod tests {
                 blend_mode: None,
                 masks: None,
                 effects: None,
+                adjustment: false,
+                track_matte_source: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -262,6 +291,8 @@ mod tests {
                 blend_mode: None,
                 masks: None,
                 effects: None,
+                adjustment: false,
+                track_matte_source: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -306,6 +337,8 @@ mod tests {
                 blend_mode: None,
                 masks: None,
                 effects: None,
+                adjustment: false,
+                track_matte_source: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -349,6 +382,8 @@ mod tests {
                 blend_mode: None,
                 masks: None,
                 effects: None,
+                adjustment: false,
+                track_matte_source: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -376,6 +411,8 @@ mod tests {
                 blend_mode: None,
                 masks: None,
                 effects: None,
+                adjustment: false,
+                track_matte_source: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -406,6 +443,8 @@ mod tests {
                 blend_mode: None,
                 masks: None,
                 effects: None,
+                adjustment: false,
+                track_matte_source: None,
             }],
         };
         // Red layer on gray background with Multiply blend
@@ -428,6 +467,8 @@ mod tests {
                 blend_mode: Some(BlendMode::Multiply),
                 masks: None,
                 effects: None,
+                adjustment: false,
+                track_matte_source: None,
             }],
         };
         let normal_rgba = render(&normal_frame).unwrap();
@@ -472,6 +513,8 @@ mod tests {
                     inverted: false,
                 }]),
                 effects: None,
+                adjustment: false,
+                track_matte_source: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -512,6 +555,8 @@ mod tests {
                 blend_mode: None,
                 masks: None,
                 effects: None,
+                adjustment: false,
+                track_matte_source: None,
             }],
         };
         let blurred = FrameScene {
@@ -540,6 +585,8 @@ mod tests {
                 blend_mode: None,
                 masks: None,
                 effects: Some(vec![Effect::GaussianBlur { radius: 3.0 }]),
+                adjustment: false,
+                track_matte_source: None,
             }],
         };
         let sharp_rgba = render(&sharp).unwrap();
@@ -569,6 +616,8 @@ mod tests {
                 blend_mode: None,
                 masks: None,
                 effects: Some(vec![Effect::Invert]),
+                adjustment: false,
+                track_matte_source: None,
             }],
         };
         let rgba = render(&frame).unwrap();
@@ -606,6 +655,8 @@ mod tests {
                     blur: 2.0,
                     opacity: 0.8,
                 }]),
+                adjustment: false,
+                track_matte_source: None,
             }],
         };
         // Should render without panicking
@@ -635,6 +686,8 @@ mod tests {
                 blend_mode: None,
                 masks: None,
                 effects: None,
+                adjustment: false,
+                track_matte_source: None,
             }],
         };
         let bright = FrameScene {
@@ -659,10 +712,68 @@ mod tests {
                     brightness: 50.0,
                     contrast: 0.0,
                 }]),
+                adjustment: false,
+                track_matte_source: None,
             }],
         };
         let normal_rgba = render(&normal).unwrap();
         let bright_rgba = render(&bright).unwrap();
         assert_ne!(normal_rgba, bright_rgba, "brightness effect should change output");
+    }
+
+    #[test]
+    fn adjustment_layer_applies_effects_to_below() {
+        use crate::schema::effects::Effect;
+        // Layer 1: white solid filling the canvas
+        // Layer 2: adjustment layer with invert effect
+        // Result: white inverted = black
+        let frame = FrameScene {
+            width: 4,
+            height: 4,
+            background: "#000000".into(),
+            layers: vec![
+                ResolvedLayer {
+                    opacity: 1.0,
+                    transform: ResolvedTransform {
+                        position: Vec2 { x: 2.0, y: 2.0 },
+                        scale: Vec2 { x: 1.0, y: 1.0 },
+                        rotation: 0.0,
+                        opacity: 1.0,
+                    },
+                    content: ResolvedContent::Solid {
+                        color: "#ffffff".into(),
+                    },
+                    fill_parent: true,
+                    blend_mode: None,
+                    masks: None,
+                    effects: None,
+                    adjustment: false,
+                    track_matte_source: None,
+                },
+                ResolvedLayer {
+                    opacity: 1.0,
+                    transform: ResolvedTransform {
+                        position: Vec2 { x: 2.0, y: 2.0 },
+                        scale: Vec2 { x: 1.0, y: 1.0 },
+                        rotation: 0.0,
+                        opacity: 1.0,
+                    },
+                    content: ResolvedContent::Solid {
+                        color: "#000000".into(),
+                    },
+                    fill_parent: false,
+                    blend_mode: None,
+                    masks: None,
+                    effects: Some(vec![Effect::Invert]),
+                    adjustment: true,
+                    track_matte_source: None,
+                },
+            ],
+        };
+        let rgba = render(&frame).unwrap();
+        // White + Invert adjustment = black
+        assert_eq!(rgba[0], 0, "R should be 0 after invert adjustment");
+        assert_eq!(rgba[1], 0, "G should be 0 after invert adjustment");
+        assert_eq!(rgba[2], 0, "B should be 0 after invert adjustment");
     }
 }
