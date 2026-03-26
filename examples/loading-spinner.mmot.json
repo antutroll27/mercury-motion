@@ -1,0 +1,111 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "LoadingSpinner",
+    "width": 400,
+    "height": 400,
+    "fps": 30,
+    "duration": 60,
+    "background": "#0a0a0f",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "bg",
+          "type": "solid",
+          "in": 0,
+          "out": 60,
+          "color": "#0a0a0f",
+          "fill": "parent",
+          "transform": { "position": [200, 200] }
+        },
+        {
+          "id": "dot_1",
+          "type": "shape",
+          "in": 0,
+          "out": 60,
+          "shape": { "shape_type": "ellipse", "width": 24, "height": 24, "fill": "#f5f0e8" },
+          "transform": {
+            "position": [140, 200],
+            "scale": [
+              { "t": 0, "v": [0.5, 0.5], "easing": "ease_in_out" },
+              { "t": 10, "v": [1.2, 1.2], "easing": "ease_in_out" },
+              { "t": 20, "v": [0.5, 0.5], "easing": "ease_in_out" },
+              { "t": 30, "v": [0.5, 0.5], "easing": "ease_in_out" },
+              { "t": 40, "v": [0.5, 0.5], "easing": "ease_in_out" },
+              { "t": 50, "v": [0.5, 0.5], "easing": "ease_in_out" },
+              { "t": 60, "v": [0.5, 0.5] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 10, "v": 1.0, "easing": "ease_in_out" },
+              { "t": 20, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 30, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 40, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 50, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 60, "v": 0.3 }
+            ]
+          }
+        },
+        {
+          "id": "dot_2",
+          "type": "shape",
+          "in": 0,
+          "out": 60,
+          "shape": { "shape_type": "ellipse", "width": 24, "height": 24, "fill": "#f5f0e8" },
+          "transform": {
+            "position": [200, 200],
+            "scale": [
+              { "t": 0, "v": [0.5, 0.5], "easing": "ease_in_out" },
+              { "t": 8, "v": [0.5, 0.5], "easing": "ease_in_out" },
+              { "t": 18, "v": [1.2, 1.2], "easing": "ease_in_out" },
+              { "t": 28, "v": [0.5, 0.5], "easing": "ease_in_out" },
+              { "t": 38, "v": [0.5, 0.5], "easing": "ease_in_out" },
+              { "t": 48, "v": [0.5, 0.5], "easing": "ease_in_out" },
+              { "t": 60, "v": [0.5, 0.5] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 8, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 18, "v": 1.0, "easing": "ease_in_out" },
+              { "t": 28, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 38, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 48, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 60, "v": 0.3 }
+            ]
+          }
+        },
+        {
+          "id": "dot_3",
+          "type": "shape",
+          "in": 0,
+          "out": 60,
+          "shape": { "shape_type": "ellipse", "width": 24, "height": 24, "fill": "#f5f0e8" },
+          "transform": {
+            "position": [260, 200],
+            "scale": [
+              { "t": 0, "v": [0.5, 0.5], "easing": "ease_in_out" },
+              { "t": 16, "v": [0.5, 0.5], "easing": "ease_in_out" },
+              { "t": 26, "v": [1.2, 1.2], "easing": "ease_in_out" },
+              { "t": 36, "v": [0.5, 0.5], "easing": "ease_in_out" },
+              { "t": 46, "v": [0.5, 0.5], "easing": "ease_in_out" },
+              { "t": 56, "v": [0.5, 0.5], "easing": "ease_in_out" },
+              { "t": 60, "v": [0.5, 0.5] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 16, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 26, "v": 1.0, "easing": "ease_in_out" },
+              { "t": 36, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 46, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 56, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 60, "v": 0.3 }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

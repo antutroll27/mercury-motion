@@ -1,0 +1,148 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "SplitScreen",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "duration": 60,
+    "background": "#000000",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "side_a_bg",
+          "type": "gradient",
+          "in": 0,
+          "out": 60,
+          "gradient": {
+            "gradient_type": "linear",
+            "start": [0.0, 0.0],
+            "end": [1.0, 1.0],
+            "colors": [
+              { "offset": 0.0, "color": "#003049" },
+              { "offset": 1.0, "color": "#005f73" }
+            ]
+          },
+          "fill": "parent",
+          "transform": { "position": [960, 540] }
+        },
+        {
+          "id": "side_b_bg",
+          "type": "gradient",
+          "in": 0,
+          "out": 60,
+          "gradient": {
+            "gradient_type": "linear",
+            "start": [0.0, 0.0],
+            "end": [1.0, 1.0],
+            "colors": [
+              { "offset": 0.0, "color": "#c1121f" },
+              { "offset": 1.0, "color": "#780000" }
+            ]
+          },
+          "fill": "parent",
+          "transform": { "position": [960, 540] },
+          "masks": [
+            {
+              "path": { "type": "rect", "x": 960, "y": 0, "width": 960, "height": 1080 },
+              "mode": "add",
+              "feather": 0.0
+            }
+          ]
+        },
+        {
+          "id": "divider_line",
+          "type": "shape",
+          "in": 0,
+          "out": 60,
+          "shape": {
+            "shape_type": "rect",
+            "width": 4,
+            "height": 1200,
+            "fill": "#ffffff"
+          },
+          "transform": {
+            "position": [960, 540],
+            "rotation": [
+              { "t": 0, "v": 15.0 },
+              { "t": 60, "v": 15.0 }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 15, "v": 0.8 }
+            ]
+          }
+        },
+        {
+          "id": "text_left",
+          "type": "text",
+          "in": 10,
+          "out": 60,
+          "text": "BEFORE",
+          "font": { "family": "Arial", "size": 64.0, "weight": 700, "color": "#fdf0d5" },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [480, 580], "easing": "ease_out" },
+              { "t": 15, "v": [480, 540] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 15, "v": 1.0 }
+            ]
+          },
+          "effects": [
+            { "type": "drop_shadow", "color": "#000000", "offset_x": 0.0, "offset_y": 3.0, "blur": 10.0, "opacity": 0.5 }
+          ]
+        },
+        {
+          "id": "text_right",
+          "type": "text",
+          "in": 15,
+          "out": 60,
+          "text": "AFTER",
+          "font": { "family": "Arial", "size": 64.0, "weight": 700, "color": "#ffffff" },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [1440, 580], "easing": "ease_out" },
+              { "t": 15, "v": [1440, 540] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 15, "v": 1.0 }
+            ]
+          },
+          "effects": [
+            { "type": "drop_shadow", "color": "#000000", "offset_x": 0.0, "offset_y": 3.0, "blur": 10.0, "opacity": 0.5 }
+          ]
+        },
+        {
+          "id": "wipe_overlay",
+          "type": "solid",
+          "in": 25,
+          "out": 60,
+          "color": "#000000",
+          "fill": "parent",
+          "transform": {
+            "position": [960, 540],
+            "opacity": [
+              { "t": 0, "v": 0.0 },
+              { "t": 25, "v": 0.0, "easing": "ease_in_out" },
+              { "t": 35, "v": 0.0 }
+            ]
+          },
+          "masks": [
+            {
+              "path": { "type": "rect", "x": 0, "y": 0, "width": 1920, "height": 1080 },
+              "mode": "add",
+              "feather": 20.0,
+              "opacity": 0.0
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

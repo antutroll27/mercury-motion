@@ -1,0 +1,162 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "GradientWave",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "duration": 90,
+    "background": "#050215",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "base_gradient",
+          "type": "gradient",
+          "in": 0,
+          "out": 90,
+          "gradient": {
+            "gradient_type": "linear",
+            "start": [0.0, 0.0],
+            "end": [1.0, 1.0],
+            "colors": [
+              { "offset": 0.0, "color": "#0d0030" },
+              { "offset": 0.5, "color": "#1a0a45" },
+              { "offset": 1.0, "color": "#0a0025" }
+            ]
+          },
+          "fill": "parent",
+          "transform": { "position": [960, 540] }
+        },
+        {
+          "id": "wave_1",
+          "type": "gradient",
+          "in": 0,
+          "out": 90,
+          "gradient": {
+            "gradient_type": "radial",
+            "center": [0.3, 0.6],
+            "radius": 0.7,
+            "colors": [
+              { "offset": 0.0, "color": "#1a0066" },
+              { "offset": 0.5, "color": "#330099" },
+              { "offset": 1.0, "color": "#00000000" }
+            ]
+          },
+          "fill": "parent",
+          "transform": {
+            "position": [
+              { "t": 0, "v": [600, 540], "easing": "ease_in_out" },
+              { "t": 45, "v": [1300, 400], "easing": "ease_in_out" },
+              { "t": 90, "v": [600, 540] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.7, "easing": "ease_in_out" },
+              { "t": 45, "v": 1.0, "easing": "ease_in_out" },
+              { "t": 90, "v": 0.7 }
+            ]
+          },
+          "blend_mode": "screen"
+        },
+        {
+          "id": "wave_2",
+          "type": "gradient",
+          "in": 0,
+          "out": 90,
+          "gradient": {
+            "gradient_type": "radial",
+            "center": [0.6, 0.4],
+            "radius": 0.6,
+            "colors": [
+              { "offset": 0.0, "color": "#4a0080" },
+              { "offset": 0.4, "color": "#800060" },
+              { "offset": 1.0, "color": "#00000000" }
+            ]
+          },
+          "fill": "parent",
+          "transform": {
+            "position": [
+              { "t": 0, "v": [1400, 300], "easing": "ease_in_out" },
+              { "t": 30, "v": [800, 600], "easing": "ease_in_out" },
+              { "t": 60, "v": [1200, 700], "easing": "ease_in_out" },
+              { "t": 90, "v": [1400, 300] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.6, "easing": "ease_in_out" },
+              { "t": 30, "v": 0.9, "easing": "ease_in_out" },
+              { "t": 60, "v": 0.5, "easing": "ease_in_out" },
+              { "t": 90, "v": 0.6 }
+            ]
+          },
+          "blend_mode": "screen"
+        },
+        {
+          "id": "wave_3",
+          "type": "gradient",
+          "in": 0,
+          "out": 90,
+          "gradient": {
+            "gradient_type": "radial",
+            "center": [0.5, 0.5],
+            "radius": 0.5,
+            "colors": [
+              { "offset": 0.0, "color": "#cc2266" },
+              { "offset": 0.3, "color": "#880044" },
+              { "offset": 1.0, "color": "#00000000" }
+            ]
+          },
+          "fill": "parent",
+          "transform": {
+            "position": [
+              { "t": 0, "v": [960, 800], "easing": "ease_in_out" },
+              { "t": 22, "v": [500, 500], "easing": "ease_in_out" },
+              { "t": 45, "v": [1400, 350], "easing": "ease_in_out" },
+              { "t": 68, "v": [1100, 700], "easing": "ease_in_out" },
+              { "t": 90, "v": [960, 800] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.4, "easing": "ease_in_out" },
+              { "t": 22, "v": 0.7, "easing": "ease_in_out" },
+              { "t": 45, "v": 0.5, "easing": "ease_in_out" },
+              { "t": 68, "v": 0.8, "easing": "ease_in_out" },
+              { "t": 90, "v": 0.4 }
+            ]
+          },
+          "blend_mode": "overlay"
+        },
+        {
+          "id": "wave_4",
+          "type": "gradient",
+          "in": 0,
+          "out": 90,
+          "gradient": {
+            "gradient_type": "radial",
+            "center": [0.4, 0.3],
+            "radius": 0.4,
+            "colors": [
+              { "offset": 0.0, "color": "#0066cc" },
+              { "offset": 0.5, "color": "#003366" },
+              { "offset": 1.0, "color": "#00000000" }
+            ]
+          },
+          "fill": "parent",
+          "transform": {
+            "position": [
+              { "t": 0, "v": [300, 200], "easing": "ease_in_out" },
+              { "t": 45, "v": [1600, 800], "easing": "ease_in_out" },
+              { "t": 90, "v": [300, 200] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.5, "easing": "ease_in_out" },
+              { "t": 45, "v": 0.8, "easing": "ease_in_out" },
+              { "t": 90, "v": 0.5 }
+            ]
+          },
+          "blend_mode": "screen"
+        }
+      ]
+    }
+  }
+}

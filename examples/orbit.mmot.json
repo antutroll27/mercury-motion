@@ -1,0 +1,218 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "Orbit",
+    "width": 1080,
+    "height": 1080,
+    "fps": 30,
+    "duration": 90,
+    "background": "#0a0a1a",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "bg",
+          "type": "gradient",
+          "in": 0,
+          "out": 90,
+          "gradient": {
+            "gradient_type": "radial",
+            "center": [0.5, 0.5],
+            "radius": 0.6,
+            "colors": [
+              { "offset": 0.0, "color": "#0f0f2e" },
+              { "offset": 1.0, "color": "#0a0a1a" }
+            ]
+          },
+          "fill": "parent",
+          "transform": { "position": [540, 540] }
+        },
+        {
+          "id": "orbit_trail_1",
+          "type": "shape",
+          "in": 0,
+          "out": 90,
+          "shape": { "shape_type": "ellipse", "width": 16, "height": 16, "fill": "#00ff88" },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [740, 540], "easing": "linear" },
+              { "t": 11, "v": [681, 399], "easing": "linear" },
+              { "t": 22, "v": [540, 340], "easing": "linear" },
+              { "t": 33, "v": [399, 399], "easing": "linear" },
+              { "t": 45, "v": [340, 540], "easing": "linear" },
+              { "t": 56, "v": [399, 681], "easing": "linear" },
+              { "t": 67, "v": [540, 740], "easing": "linear" },
+              { "t": 78, "v": [681, 681], "easing": "linear" },
+              { "t": 90, "v": [740, 540] }
+            ],
+            "opacity": 0.15
+          },
+          "effects": [
+            { "type": "gaussian_blur", "radius": 10.0 }
+          ]
+        },
+        {
+          "id": "orbit_1",
+          "type": "shape",
+          "in": 2,
+          "out": 90,
+          "shape": { "shape_type": "ellipse", "width": 20, "height": 20, "fill": "#00ff88" },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [740, 540], "easing": "linear" },
+              { "t": 11, "v": [681, 399], "easing": "linear" },
+              { "t": 22, "v": [540, 340], "easing": "linear" },
+              { "t": 33, "v": [399, 399], "easing": "linear" },
+              { "t": 44, "v": [340, 540], "easing": "linear" },
+              { "t": 55, "v": [399, 681], "easing": "linear" },
+              { "t": 66, "v": [540, 740], "easing": "linear" },
+              { "t": 77, "v": [681, 681], "easing": "linear" },
+              { "t": 88, "v": [740, 540] }
+            ]
+          },
+          "effects": [
+            { "type": "glow", "color": "#00ff88", "radius": 8.0, "intensity": 0.7 }
+          ]
+        },
+        {
+          "id": "orbit_trail_2",
+          "type": "shape",
+          "in": 0,
+          "out": 90,
+          "shape": { "shape_type": "ellipse", "width": 12, "height": 12, "fill": "#ff00ff" },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [540, 390], "easing": "linear" },
+              { "t": 7, "v": [434, 434], "easing": "linear" },
+              { "t": 15, "v": [390, 540], "easing": "linear" },
+              { "t": 22, "v": [434, 646], "easing": "linear" },
+              { "t": 30, "v": [540, 690], "easing": "linear" },
+              { "t": 37, "v": [646, 646], "easing": "linear" },
+              { "t": 45, "v": [690, 540], "easing": "linear" },
+              { "t": 52, "v": [646, 434], "easing": "linear" },
+              { "t": 60, "v": [540, 390], "easing": "linear" },
+              { "t": 67, "v": [434, 434], "easing": "linear" },
+              { "t": 75, "v": [390, 540], "easing": "linear" },
+              { "t": 82, "v": [434, 646], "easing": "linear" },
+              { "t": 90, "v": [540, 690] }
+            ],
+            "opacity": 0.12
+          },
+          "effects": [
+            { "type": "gaussian_blur", "radius": 8.0 }
+          ]
+        },
+        {
+          "id": "orbit_2",
+          "type": "shape",
+          "in": 2,
+          "out": 90,
+          "shape": { "shape_type": "ellipse", "width": 16, "height": 16, "fill": "#ff00ff" },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [540, 390], "easing": "linear" },
+              { "t": 7, "v": [434, 434], "easing": "linear" },
+              { "t": 15, "v": [390, 540], "easing": "linear" },
+              { "t": 22, "v": [434, 646], "easing": "linear" },
+              { "t": 30, "v": [540, 690], "easing": "linear" },
+              { "t": 37, "v": [646, 646], "easing": "linear" },
+              { "t": 45, "v": [690, 540], "easing": "linear" },
+              { "t": 52, "v": [646, 434], "easing": "linear" },
+              { "t": 60, "v": [540, 390], "easing": "linear" },
+              { "t": 67, "v": [434, 434], "easing": "linear" },
+              { "t": 75, "v": [390, 540], "easing": "linear" },
+              { "t": 82, "v": [434, 646], "easing": "linear" },
+              { "t": 90, "v": [540, 690] }
+            ]
+          },
+          "effects": [
+            { "type": "glow", "color": "#ff00ff", "radius": 6.0, "intensity": 0.7 }
+          ]
+        },
+        {
+          "id": "orbit_trail_3",
+          "type": "shape",
+          "in": 0,
+          "out": 90,
+          "shape": { "shape_type": "ellipse", "width": 10, "height": 10, "fill": "#ffcc00" },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [660, 420], "easing": "linear" },
+              { "t": 5, "v": [604, 452], "easing": "linear" },
+              { "t": 10, "v": [540, 420], "easing": "linear" },
+              { "t": 15, "v": [476, 452], "easing": "linear" },
+              { "t": 20, "v": [420, 540], "easing": "linear" },
+              { "t": 25, "v": [476, 628], "easing": "linear" },
+              { "t": 30, "v": [540, 660], "easing": "linear" },
+              { "t": 35, "v": [604, 628], "easing": "linear" },
+              { "t": 40, "v": [660, 540], "easing": "linear" },
+              { "t": 45, "v": [660, 420], "easing": "linear" },
+              { "t": 50, "v": [604, 452], "easing": "linear" },
+              { "t": 55, "v": [540, 420], "easing": "linear" },
+              { "t": 60, "v": [476, 452], "easing": "linear" },
+              { "t": 65, "v": [420, 540], "easing": "linear" },
+              { "t": 70, "v": [476, 628], "easing": "linear" },
+              { "t": 75, "v": [540, 660], "easing": "linear" },
+              { "t": 80, "v": [604, 628], "easing": "linear" },
+              { "t": 85, "v": [660, 540], "easing": "linear" },
+              { "t": 90, "v": [660, 420] }
+            ],
+            "opacity": 0.1
+          },
+          "effects": [
+            { "type": "gaussian_blur", "radius": 6.0 }
+          ]
+        },
+        {
+          "id": "orbit_3",
+          "type": "shape",
+          "in": 2,
+          "out": 90,
+          "shape": { "shape_type": "ellipse", "width": 12, "height": 12, "fill": "#ffcc00" },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [660, 420], "easing": "linear" },
+              { "t": 5, "v": [604, 452], "easing": "linear" },
+              { "t": 10, "v": [540, 420], "easing": "linear" },
+              { "t": 15, "v": [476, 452], "easing": "linear" },
+              { "t": 20, "v": [420, 540], "easing": "linear" },
+              { "t": 25, "v": [476, 628], "easing": "linear" },
+              { "t": 30, "v": [540, 660], "easing": "linear" },
+              { "t": 35, "v": [604, 628], "easing": "linear" },
+              { "t": 40, "v": [660, 540], "easing": "linear" },
+              { "t": 45, "v": [660, 420], "easing": "linear" },
+              { "t": 50, "v": [604, 452], "easing": "linear" },
+              { "t": 55, "v": [540, 420], "easing": "linear" },
+              { "t": 60, "v": [476, 452], "easing": "linear" },
+              { "t": 65, "v": [420, 540], "easing": "linear" },
+              { "t": 70, "v": [476, 628], "easing": "linear" },
+              { "t": 75, "v": [540, 660], "easing": "linear" },
+              { "t": 80, "v": [604, 628], "easing": "linear" },
+              { "t": 85, "v": [660, 540], "easing": "linear" },
+              { "t": 90, "v": [660, 420] }
+            ]
+          },
+          "effects": [
+            { "type": "glow", "color": "#ffcc00", "radius": 5.0, "intensity": 0.7 }
+          ]
+        },
+        {
+          "id": "planet",
+          "type": "shape",
+          "in": 0,
+          "out": 90,
+          "shape": { "shape_type": "ellipse", "width": 60, "height": 60, "fill": "#ffffff" },
+          "transform": {
+            "position": [540, 540]
+          },
+          "effects": [
+            { "type": "glow", "color": "#ffffff", "radius": 20.0, "intensity": 0.5 },
+            { "type": "drop_shadow", "color": "#4444ff", "offset_x": 0.0, "offset_y": 0.0, "blur": 30.0, "opacity": 0.4 }
+          ]
+        }
+      ]
+    }
+  }
+}
