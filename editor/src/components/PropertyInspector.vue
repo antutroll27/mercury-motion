@@ -98,7 +98,7 @@ function updateTransform(prop: string, value: number, index?: number) {
 
       <!-- Source File (for image/video/audio layers) -->
       <div v-if="hasSource" class="border-t border-cosmos-border pt-3">
-        <h3 class="font-serif text-sm text-varden mb-3">Source</h3>
+        <h3 class="font-mono text-[11px] text-varden uppercase tracking-widest mb-3">Source</h3>
         <input
           ref="fileInputRef"
           type="file"
@@ -125,7 +125,7 @@ function updateTransform(prop: string, value: number, index?: number) {
 
       <!-- Color (for solid layers) -->
       <div v-if="layer.type === 'solid'" class="border-t border-cosmos-border pt-3">
-        <h3 class="font-serif text-sm text-varden mb-3">Color</h3>
+        <h3 class="font-mono text-[11px] text-varden uppercase tracking-widest mb-3">Color</h3>
         <div class="flex items-center gap-2">
           <input
             type="color"
@@ -144,7 +144,7 @@ function updateTransform(prop: string, value: number, index?: number) {
 
       <!-- Text Content (for text layers) -->
       <div v-if="layer.type === 'text'" class="border-t border-cosmos-border pt-3">
-        <h3 class="font-serif text-sm text-varden mb-3">Text</h3>
+        <h3 class="font-mono text-[11px] text-varden uppercase tracking-widest mb-3">Text</h3>
         <textarea
           :value="(layer as any).text || ''"
           @input="store.updateLayerProperty(layer.id, 'text', ($event.target as HTMLTextAreaElement).value)"
@@ -198,7 +198,7 @@ function updateTransform(prop: string, value: number, index?: number) {
 
       <!-- Transform Section -->
       <div class="border-t border-cosmos-border pt-3">
-        <h3 class="font-serif text-sm text-varden mb-3">Transform</h3>
+        <h3 class="font-mono text-[11px] text-varden uppercase tracking-widest mb-3">Transform</h3>
 
         <!-- Position -->
         <div class="mb-3">
@@ -285,7 +285,7 @@ function updateTransform(prop: string, value: number, index?: number) {
 
       <!-- Timing Section -->
       <div class="border-t border-cosmos-border pt-3">
-        <h3 class="font-serif text-sm text-varden mb-3">Timing</h3>
+        <h3 class="font-mono text-[11px] text-varden uppercase tracking-widest mb-3">Timing</h3>
         <div class="flex gap-2">
           <div class="flex-1">
             <label class="font-mono text-[9px] text-text-muted uppercase tracking-[0.15em] block mb-1">In</label>
@@ -304,7 +304,7 @@ function updateTransform(prop: string, value: number, index?: number) {
 
       <!-- Blend Mode (if available) -->
       <div v-if="layer.blend_mode !== undefined" class="border-t border-cosmos-border pt-3">
-        <h3 class="font-serif text-sm text-varden mb-3">Compositing</h3>
+        <h3 class="font-mono text-[11px] text-varden uppercase tracking-widest mb-3">Compositing</h3>
         <label class="font-mono text-[9px] text-text-muted uppercase tracking-[0.15em] block mb-1">Blend Mode</label>
         <select
           :value="layer.blend_mode || 'normal'"
