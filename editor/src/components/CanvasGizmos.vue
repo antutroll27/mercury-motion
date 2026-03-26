@@ -201,6 +201,9 @@ function handleMouseDown(e: MouseEvent) {
   dragOrigScale.value = [...(layer.value.transform.scale || [1, 1])] as [number, number]
   dragOrigRotation.value = layer.value.transform.rotation || 0
 
+  // Clean up stale listeners before adding
+  window.removeEventListener('mousemove', handleMouseMove)
+  window.removeEventListener('mouseup', handleMouseUp)
   window.addEventListener('mousemove', handleMouseMove)
   window.addEventListener('mouseup', handleMouseUp)
 }
@@ -231,10 +234,10 @@ function setLayerProp(path: string, value: any) {
 function handleMouseMove(e: MouseEvent) {
   if (!layer.value || dragMode.value === 'none') return
 
-  const sw = store.scene.meta.width
-  const sh = store.scene.meta.height
-  const cw = overlayRef.value?.width || sw
-  const ch = overlayRef.value?.height || sh
+  const sw = store.scene.meta.width || 1
+  const sh = store.scene.meta.height || 1
+  const cw = overlayRef.value?.width || sw || 1
+  const ch = overlayRef.value?.height || sh || 1
 
   const dx = (e.clientX - dragStartX.value) * (sw / cw)
   const dy = (e.clientY - dragStartY.value) * (sh / ch)

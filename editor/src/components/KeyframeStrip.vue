@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onBeforeUnmount } from 'vue'
 import { useSceneStore } from '../stores/scene'
 
 const props = defineProps<{
@@ -72,12 +72,15 @@ function posToFrame(e: MouseEvent): number {
 function handleDragStart(e: MouseEvent, idx: number) {
   e.preventDefault()
   dragIdx.value = idx
+  window.removeEventListener('mousemove', handleDragMove)
+  window.removeEventListener('mouseup', handleDragEnd)
   window.addEventListener('mousemove', handleDragMove)
   window.addEventListener('mouseup', handleDragEnd)
 }
 
 function handleDragMove(e: MouseEvent) {
   if (dragIdx.value === null || !keyframes.value) return
+  if (dragIdx.value >= keyframes.value.length) { dragIdx.value = null; return }
   const frame = posToFrame(e)
   const kf = keyframes.value[dragIdx.value]
   if (kf && frame >= 0 && frame < store.totalFrames) {
@@ -91,6 +94,11 @@ function handleDragEnd() {
   window.removeEventListener('mousemove', handleDragMove)
   window.removeEventListener('mouseup', handleDragEnd)
 }
+
+onBeforeUnmount(() => {
+  window.removeEventListener('mousemove', handleDragMove)
+  window.removeEventListener('mouseup', handleDragEnd)
+})
 </script>
 
 <template>
