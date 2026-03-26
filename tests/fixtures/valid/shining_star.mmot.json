@@ -1,0 +1,188 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "Shining Star",
+    "width": 1080,
+    "height": 1080,
+    "fps": 30,
+    "duration": 90,
+    "root": "main",
+    "background": "#0a0a1a"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "glow_bg",
+          "type": "gradient",
+          "in": 0,
+          "out": 90,
+          "fill": "parent",
+          "gradient": {
+            "gradient_type": "radial",
+            "center": [0.5, 0.5],
+            "radius": 0.6,
+            "colors": [
+              { "offset": 0.0, "color": "#1a1a3e" },
+              { "offset": 1.0, "color": "#0a0a1a" }
+            ]
+          },
+          "transform": {
+            "position": [540, 540],
+            "opacity": 1.0
+          }
+        },
+        {
+          "id": "star_glow",
+          "type": "shape",
+          "in": 0,
+          "out": 90,
+          "shape": {
+            "shape_type": "ellipse",
+            "width": 300,
+            "height": 300,
+            "fill": "#FFD700"
+          },
+          "effects": [
+            { "type": "gaussian_blur", "radius": 40.0 },
+            { "type": "glow", "color": "#FFD700", "radius": 30.0, "intensity": 0.8 }
+          ],
+          "blend_mode": "add",
+          "transform": {
+            "position": [540, 540],
+            "scale": [
+              { "t": 0, "v": [0.5, 0.5], "easing": "ease_in_out" },
+              { "t": 45, "v": [1.2, 1.2], "easing": "ease_in_out" },
+              { "t": 90, "v": [0.5, 0.5] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 22, "v": 0.9, "easing": "ease_in_out" },
+              { "t": 45, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 67, "v": 0.9, "easing": "ease_in_out" },
+              { "t": 90, "v": 0.3 }
+            ]
+          }
+        },
+        {
+          "id": "star_shape",
+          "type": "shape",
+          "in": 0,
+          "out": 90,
+          "shape": {
+            "shape_type": "polygon",
+            "points": [
+              [0, -120], [28, -38], [114, -37], [46, 15], [70, 97],
+              [0, 48], [-70, 97], [-46, 15], [-114, -37], [-28, -38]
+            ],
+            "fill": "#FFD700",
+            "stroke": { "color": "#FFF8DC", "width": 2.0 }
+          },
+          "effects": [
+            { "type": "drop_shadow", "color": "#FFD700", "offset_x": 0.0, "offset_y": 0.0, "blur": 20.0, "opacity": 0.8 }
+          ],
+          "transform": {
+            "position": [540, 540],
+            "rotation": [
+              { "t": 0, "v": 0 },
+              { "t": 90, "v": 360 }
+            ],
+            "scale": [
+              { "t": 0, "v": [0.6, 0.6], "easing": "ease_in_out" },
+              { "t": 30, "v": [1.1, 1.1], "easing": "ease_in_out" },
+              { "t": 60, "v": [0.8, 0.8], "easing": "ease_in_out" },
+              { "t": 90, "v": [1.0, 1.0] }
+            ],
+            "opacity": 1.0
+          }
+        },
+        {
+          "id": "sparkle_1",
+          "type": "shape",
+          "in": 0,
+          "out": 90,
+          "shape": {
+            "shape_type": "ellipse",
+            "width": 8,
+            "height": 8,
+            "fill": "#FFFFFF"
+          },
+          "effects": [
+            { "type": "glow", "color": "#FFFFFF", "radius": 8.0, "intensity": 1.0 }
+          ],
+          "blend_mode": "add",
+          "transform": {
+            "position": [
+              { "t": 0, "v": [654, 420] },
+              { "t": 90, "v": [440, 660] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 15, "v": 1.0, "easing": "ease_in" },
+              { "t": 30, "v": 0.0, "easing": "ease_out" },
+              { "t": 45, "v": 1.0, "easing": "ease_in" },
+              { "t": 60, "v": 0.0, "easing": "ease_out" },
+              { "t": 75, "v": 1.0, "easing": "ease_in" },
+              { "t": 90, "v": 0.0 }
+            ]
+          }
+        },
+        {
+          "id": "sparkle_2",
+          "type": "shape",
+          "in": 0,
+          "out": 90,
+          "shape": {
+            "shape_type": "ellipse",
+            "width": 6,
+            "height": 6,
+            "fill": "#FFFFFF"
+          },
+          "effects": [
+            { "type": "glow", "color": "#FFD700", "radius": 6.0, "intensity": 1.0 }
+          ],
+          "blend_mode": "add",
+          "transform": {
+            "position": [
+              { "t": 0, "v": [426, 660] },
+              { "t": 90, "v": [660, 426] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 1.0, "easing": "ease_in" },
+              { "t": 20, "v": 0.0, "easing": "ease_out" },
+              { "t": 40, "v": 1.0, "easing": "ease_in" },
+              { "t": 60, "v": 0.0, "easing": "ease_out" },
+              { "t": 80, "v": 1.0, "easing": "ease_in" },
+              { "t": 90, "v": 0.0 }
+            ]
+          }
+        },
+        {
+          "id": "title",
+          "type": "text",
+          "in": 15,
+          "out": 90,
+          "text": "MERCURY MOTION",
+          "font": {
+            "family": "Inter",
+            "size": 36,
+            "weight": 700,
+            "color": "#FDF0D5"
+          },
+          "align": "center",
+          "effects": [
+            { "type": "drop_shadow", "color": "#FFD700", "offset_x": 0.0, "offset_y": 2.0, "blur": 10.0, "opacity": 0.5 }
+          ],
+          "transform": {
+            "position": [540, 920],
+            "opacity": [
+              { "t": 15, "v": 0.0, "easing": "ease_out" },
+              { "t": 35, "v": 1.0 }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "assets": { "fonts": [] }
+}

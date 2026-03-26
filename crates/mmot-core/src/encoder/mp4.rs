@@ -102,8 +102,8 @@ fn write_mp4(
 
 /// Write encoded AV1 video + raw PCM audio to MP4.
 ///
-/// Tries ffmpeg-based muxing first (which supports audio tracks).
-/// Falls back to video-only MP4 via muxide if ffmpeg is unavailable.
+/// Audio-bearing exports must fail explicitly if ffmpeg-backed muxing is not
+/// available so callers do not silently ship a video with missing audio.
 #[allow(clippy::too_many_arguments)]
 fn write_mp4_with_audio(
     video_packets: &[(Vec<u8>, u64)],
@@ -115,7 +115,7 @@ fn write_mp4_with_audio(
     audio_channels: u32,
     path: &Path,
 ) -> Result<()> {
-    match crate::encoder::ffmpeg_mux::mux_mp4_with_audio(
+    crate::encoder::ffmpeg_mux::mux_mp4_with_audio(
         video_packets,
         width,
         height,
@@ -124,13 +124,7 @@ fn write_mp4_with_audio(
         audio_sample_rate,
         audio_channels,
         path,
-    ) {
-        Ok(()) => Ok(()),
-        Err(e) => {
-            tracing::warn!("ffmpeg audio muxing unavailable ({e}), writing video-only MP4");
-            write_mp4(video_packets, width, height, fps, path)
-        }
-    }
+    )
 }
 
 /// Extract the AV1 Sequence Header OBU from a rav1e packet.
@@ -157,7 +151,8 @@ pub fn write_ivf(
     // IVF file header (32 bytes)
     file.write_all(b"DKIF").map_err(MmotError::Io)?;
     file.write_all(&0u16.to_le_bytes()).map_err(MmotError::Io)?;
-    file.write_all(&32u16.to_le_bytes()).map_err(MmotError::Io)?;
+    file.write_all(&32u16.to_le_bytes())
+        .map_err(MmotError::Io)?;
     file.write_all(b"AV01").map_err(MmotError::Io)?;
     file.write_all(&(width as u16).to_le_bytes())
         .map_err(MmotError::Io)?;

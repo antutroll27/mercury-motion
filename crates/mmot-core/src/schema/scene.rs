@@ -29,6 +29,21 @@ pub struct Meta {
     #[serde(default = "default_black")]
     pub background: String,
     pub root: String,
+    /// Optional safe zone for multi-format export.
+    /// Content inside the safe zone is guaranteed visible in all export profiles.
+    #[serde(default)]
+    pub safe_zone: Option<SafeZone>,
+}
+
+/// A rectangular safe zone within the canvas.
+/// Content inside this rectangle is guaranteed to be visible across all
+/// export aspect ratios (e.g. YouTube 16:9, Instagram 1:1, TikTok 9:16).
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SafeZone {
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
 }
 
 fn default_black() -> String {

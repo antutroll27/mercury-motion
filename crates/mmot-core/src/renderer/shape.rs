@@ -1,37 +1,6 @@
 use skia_safe::{Canvas, Color, Paint, PaintStyle, Path, PathMeasure, Rect, RRect};
 
-/// Resolved shape data ready for rendering.
-pub enum ResolvedShape {
-    Rect {
-        width: f64,
-        height: f64,
-        corner_radius: f64,
-        fill: Option<String>,
-        stroke_color: Option<String>,
-        stroke_width: f64,
-    },
-    Ellipse {
-        width: f64,
-        height: f64,
-        fill: Option<String>,
-        stroke_color: Option<String>,
-        stroke_width: f64,
-    },
-    Line {
-        x1: f64,
-        y1: f64,
-        x2: f64,
-        y2: f64,
-        stroke_color: String,
-        stroke_width: f64,
-    },
-    Polygon {
-        points: Vec<[f64; 2]>,
-        fill: Option<String>,
-        stroke_color: Option<String>,
-        stroke_width: f64,
-    },
-}
+use super::ResolvedShape;
 
 /// Returns true if trimming is the default (no-op) range.
 fn is_default_trim(start: f64, end: f64) -> bool {

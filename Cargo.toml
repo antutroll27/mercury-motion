@@ -1,5 +1,6 @@
 [workspace]
 members = ["crates/mmot-core", "crates/mmot-cli", "editor/src-tauri"]
+exclude = ["crates/mmot-wasm"]
 resolver = "2"
 
 [workspace.dependencies]

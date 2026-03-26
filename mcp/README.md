@@ -71,14 +71,14 @@ Validate a `.mmot.json` file without rendering.
 
 ### preview_frame
 
-Render a single frame from inline scene JSON.
+Render a single frame from inline scene JSON to a PNG image.
 
 **Parameters:**
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | `scene_json` | string | *(required)* | Full `.mmot.json` content as a string |
 | `frame` | number | `0` | Frame number to render |
-| `output_path` | string | auto | Output PNG path (defaults to temp file) |
+| `output_path` | string | auto | Output PNG path (defaults to a temp `.png` file) |
 
 **Returns:** Path to the rendered output file.
 

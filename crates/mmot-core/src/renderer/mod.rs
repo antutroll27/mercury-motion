@@ -1,16 +1,28 @@
+// Skia-backed renderer submodules — only available with native-renderer feature
+#[cfg(feature = "native-renderer")]
 pub mod blend;
+#[cfg(feature = "native-renderer")]
 pub mod effects;
+#[cfg(feature = "native-renderer")]
 mod gradient;
+#[cfg(feature = "native-renderer")]
 mod image;
+#[cfg(feature = "native-renderer")]
 pub mod layers;
+#[cfg(feature = "native-renderer")]
 pub mod masks;
+#[cfg(feature = "native-renderer")]
 pub mod shape;
+#[cfg(feature = "native-renderer")]
 mod solid;
+#[cfg(feature = "native-renderer")]
 mod surface;
+#[cfg(feature = "native-renderer")]
 pub mod text;
+
+// transition is pure Rust (no Skia deps) — always available
 pub mod transition;
 
-use crate::error::Result;
 use crate::schema::{TextAlign, Vec2};
 
 /// A fully resolved frame — all animatable values are concrete.
@@ -75,7 +87,7 @@ pub enum ResolvedContent {
         custom_font_data: Option<Vec<u8>>,
     },
     Shape {
-        shape: shape::ResolvedShape,
+        shape: ResolvedShape,
     },
     Gradient {
         gradient: crate::schema::GradientSpec,
@@ -84,8 +96,43 @@ pub enum ResolvedContent {
     },
 }
 
+/// Resolved shape data ready for rendering.
+/// Defined here (always available) so WASM and other backends can use it.
+pub enum ResolvedShape {
+    Rect {
+        width: f64,
+        height: f64,
+        corner_radius: f64,
+        fill: Option<String>,
+        stroke_color: Option<String>,
+        stroke_width: f64,
+    },
+    Ellipse {
+        width: f64,
+        height: f64,
+        fill: Option<String>,
+        stroke_color: Option<String>,
+        stroke_width: f64,
+    },
+    Line {
+        x1: f64,
+        y1: f64,
+        x2: f64,
+        y2: f64,
+        stroke_color: String,
+        stroke_width: f64,
+    },
+    Polygon {
+        points: Vec<[f64; 2]>,
+        fill: Option<String>,
+        stroke_color: Option<String>,
+        stroke_width: f64,
+    },
+}
+
 /// Render a FrameScene to raw RGBA bytes (width x height x 4).
-pub fn render(frame_scene: &FrameScene) -> Result<Vec<u8>> {
+#[cfg(feature = "native-renderer")]
+pub fn render(frame_scene: &FrameScene) -> crate::error::Result<Vec<u8>> {
     let w = frame_scene.width;
     let h = frame_scene.height;
     let mut surface = surface::create_cpu_surface(w, h)?;
@@ -130,6 +177,7 @@ pub fn render(frame_scene: &FrameScene) -> Result<Vec<u8>> {
     Ok(rgba)
 }
 
+#[cfg(feature = "native-renderer")]
 fn parse_color(hex: &str) -> skia_safe::Color {
     let hex = hex.trim_start_matches('#');
     if hex.len() < 6 {
@@ -141,7 +189,7 @@ fn parse_color(hex: &str) -> skia_safe::Color {
     skia_safe::Color::from_argb(255, r, g, b)
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native-renderer"))]
 mod tests {
     use super::*;
 
@@ -209,7 +257,7 @@ mod tests {
                     opacity: 1.0,
                 },
                 content: ResolvedContent::Shape {
-                    shape: shape::ResolvedShape::Rect {
+                    shape: ResolvedShape::Rect {
                         width: 80.0,
                         height: 40.0,
                         corner_radius: 5.0,
@@ -250,7 +298,7 @@ mod tests {
                     opacity: 1.0,
                 },
                 content: ResolvedContent::Shape {
-                    shape: shape::ResolvedShape::Line {
+                    shape: ResolvedShape::Line {
                         x1: 0.0,
                         y1: 0.0,
                         x2: 100.0,
@@ -290,7 +338,7 @@ mod tests {
                     opacity: 1.0,
                 },
                 content: ResolvedContent::Shape {
-                    shape: shape::ResolvedShape::Polygon {
+                    shape: ResolvedShape::Polygon {
                         points: vec![[50.0, 10.0], [90.0, 90.0], [10.0, 90.0]],
                         fill: Some("#00ff00".into()),
                         stroke_color: None,
@@ -566,7 +614,7 @@ mod tests {
                     opacity: 1.0,
                 },
                 content: ResolvedContent::Shape {
-                    shape: shape::ResolvedShape::Rect {
+                    shape: ResolvedShape::Rect {
                         width: 16.0,
                         height: 16.0,
                         corner_radius: 0.0,
@@ -598,7 +646,7 @@ mod tests {
                     opacity: 1.0,
                 },
                 content: ResolvedContent::Shape {
-                    shape: shape::ResolvedShape::Rect {
+                    shape: ResolvedShape::Rect {
                         width: 16.0,
                         height: 16.0,
                         corner_radius: 0.0,
@@ -838,7 +886,7 @@ mod tests {
                     opacity: 1.0,
                 },
                 content: ResolvedContent::Shape {
-                    shape: shape::ResolvedShape::Line {
+                    shape: ResolvedShape::Line {
                         x1: 0.0,
                         y1: 0.0,
                         x2: 99.0,

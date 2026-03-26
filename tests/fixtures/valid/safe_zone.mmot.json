@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "SafeZoneTest",
+    "width": 1920, "height": 1080,
+    "fps": 30, "duration": 30,
+    "background": "#000000",
+    "root": "main",
+    "safe_zone": {
+      "x": 560,
+      "y": 140,
+      "width": 800,
+      "height": 800
+    }
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "bg",
+          "type": "solid",
+          "in": 0, "out": 30,
+          "color": "#1a1a2e",
+          "transform": { "position": [960.0, 540.0], "scale": [1.0, 1.0], "opacity": 1.0, "rotation": 0.0 }
+        }
+      ]
+    }
+  }
+}

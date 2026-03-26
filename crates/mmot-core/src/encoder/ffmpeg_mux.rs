@@ -18,88 +18,34 @@ pub fn mux_mp4_with_audio(
     audio_channels: u32,
     path: &Path,
 ) -> Result<()> {
-    use std::io::Write;
-
-    ffmpeg_next::init().map_err(|e| MmotError::Encoder(format!("ffmpeg init: {e}")))?;
-
-    // Step 1: Write AV1 packets to a temporary IVF file for ffmpeg to read as input.
     let ivf_tmp = path.with_extension("tmp.ivf");
+    let wav_tmp = path.with_extension("tmp.wav");
+
     super::mp4::write_ivf(video_packets, width, height, fps, &ivf_tmp)?;
+    write_wav_file(&wav_tmp, audio_pcm_s16, audio_sample_rate, audio_channels)?;
 
-    // Step 2: Write raw PCM audio to a temporary file.
-    let pcm_tmp = path.with_extension("tmp.pcm");
-    {
-        let mut f = std::fs::File::create(&pcm_tmp).map_err(MmotError::Io)?;
-        for sample in audio_pcm_s16 {
-            f.write_all(&sample.to_le_bytes()).map_err(MmotError::Io)?;
-        }
-    }
+    let result = run_ffmpeg_command(&[
+        "-y".into(),
+        "-hide_banner".into(),
+        "-loglevel".into(),
+        "error".into(),
+        "-i".into(),
+        ivf_tmp.to_string_lossy().into_owned(),
+        "-i".into(),
+        wav_tmp.to_string_lossy().into_owned(),
+        "-c:v".into(),
+        "copy".into(),
+        "-c:a".into(),
+        "aac".into(),
+        "-shortest".into(),
+        path.to_string_lossy().into_owned(),
+    ]);
 
-    // Step 3: Use ffmpeg to mux video + audio into MP4.
-    // Open video input
-    let mut ictx_video = ffmpeg_next::format::input(&ivf_tmp)
-        .map_err(|e| MmotError::Encoder(format!("ffmpeg open video input: {e}")))?;
-
-    // Create output context
-    let mut octx = ffmpeg_next::format::output_as(path, "mp4")
-        .map_err(|e| MmotError::Encoder(format!("ffmpeg create mp4 output: {e}")))?;
-
-    // Map video stream
-    let video_stream = ictx_video
-        .streams()
-        .best(ffmpeg_next::media::Type::Video)
-        .ok_or_else(|| MmotError::Encoder("no video stream in IVF".into()))?;
-    let video_stream_index = video_stream.index();
-    let video_params = video_stream.parameters();
-
-    let mut out_video = octx.add_stream(ffmpeg_next::codec::Id::AV1)
-        .map_err(|e| MmotError::Encoder(format!("ffmpeg add video stream: {e}")))?;
-    out_video.set_parameters(video_params);
-
-    // Add audio stream (PCM s16le)
-    let mut out_audio = octx.add_stream(ffmpeg_next::codec::Id::AAC)
-        .map_err(|e| MmotError::Encoder(format!("ffmpeg add audio stream: {e}")))?;
-    {
-        let mut audio_par = out_audio.parameters();
-        // Set audio codec parameters via the codec context
-        // For raw PCM in MP4, we use the stream parameters
-        unsafe {
-            let par = audio_par.as_mut_ptr();
-            (*par).codec_type = ffmpeg_sys_next::AVMediaType::AVMEDIA_TYPE_AUDIO;
-            (*par).codec_id = ffmpeg_sys_next::AVCodecID::AV_CODEC_ID_PCM_S16LE;
-            (*par).sample_rate = audio_sample_rate as i32;
-            (*par).ch_layout.nb_channels = audio_channels as i32;
-        }
-        out_audio.set_parameters(audio_par);
-    }
-
-    // Write header
-    octx.write_header()
-        .map_err(|e| MmotError::Encoder(format!("ffmpeg write header: {e}")))?;
-
-    // Copy video packets
-    for (stream, packet) in ictx_video.packets() {
-        if stream.index() == video_stream_index {
-            let mut pkt = packet;
-            pkt.set_stream(0); // video is stream 0
-            pkt.write_interleaved(&mut octx)
-                .map_err(|e| MmotError::Encoder(format!("ffmpeg write video packet: {e}")))?;
-        }
-    }
-
-    // Write trailer
-    octx.write_trailer()
-        .map_err(|e| MmotError::Encoder(format!("ffmpeg write trailer: {e}")))?;
-
-    // Clean up temp files
     std::fs::remove_file(&ivf_tmp).ok();
-    std::fs::remove_file(&pcm_tmp).ok();
+    std::fs::remove_file(&wav_tmp).ok();
 
-    tracing::info!(
-        "muxed MP4 with {} audio samples via ffmpeg",
-        audio_pcm_s16.len()
-    );
-
+    result?;
+    tracing::info!("muxed MP4 with audio via ffmpeg CLI: {}", path.display());
     Ok(())
 }
 
@@ -134,55 +80,25 @@ pub fn mux_webm(
     fps: f64,
     path: &Path,
 ) -> Result<()> {
-    ffmpeg_next::init().map_err(|e| MmotError::Encoder(format!("ffmpeg init: {e}")))?;
-
-    // Write AV1 packets to a temporary IVF file for ffmpeg to read as input.
     let ivf_tmp = path.with_extension("tmp.ivf");
     super::mp4::write_ivf(video_packets, width, height, fps, &ivf_tmp)?;
 
-    // Open input (IVF)
-    let mut ictx = ffmpeg_next::format::input(&ivf_tmp)
-        .map_err(|e| MmotError::Encoder(format!("ffmpeg open IVF input: {e}")))?;
+    let result = run_ffmpeg_command(&[
+        "-y".into(),
+        "-hide_banner".into(),
+        "-loglevel".into(),
+        "error".into(),
+        "-i".into(),
+        ivf_tmp.to_string_lossy().into_owned(),
+        "-c:v".into(),
+        "copy".into(),
+        path.to_string_lossy().into_owned(),
+    ]);
 
-    // Create WebM output
-    let mut octx = ffmpeg_next::format::output_as(path, "webm")
-        .map_err(|e| MmotError::Encoder(format!("ffmpeg create webm output: {e}")))?;
-
-    // Map video stream
-    let video_stream = ictx
-        .streams()
-        .best(ffmpeg_next::media::Type::Video)
-        .ok_or_else(|| MmotError::Encoder("no video stream in IVF".into()))?;
-    let video_stream_index = video_stream.index();
-    let video_params = video_stream.parameters();
-
-    let mut out_video = octx.add_stream(ffmpeg_next::codec::Id::AV1)
-        .map_err(|e| MmotError::Encoder(format!("ffmpeg add video stream: {e}")))?;
-    out_video.set_parameters(video_params);
-
-    // Write header
-    octx.write_header()
-        .map_err(|e| MmotError::Encoder(format!("ffmpeg write header: {e}")))?;
-
-    // Copy video packets
-    for (stream, packet) in ictx.packets() {
-        if stream.index() == video_stream_index {
-            let mut pkt = packet;
-            pkt.set_stream(0);
-            pkt.write_interleaved(&mut octx)
-                .map_err(|e| MmotError::Encoder(format!("ffmpeg write packet: {e}")))?;
-        }
-    }
-
-    // Write trailer
-    octx.write_trailer()
-        .map_err(|e| MmotError::Encoder(format!("ffmpeg write trailer: {e}")))?;
-
-    // Clean up temp file
     std::fs::remove_file(&ivf_tmp).ok();
 
-    tracing::info!("wrote WebM via ffmpeg: {}", path.display());
-
+    result?;
+    tracing::info!("wrote WebM via ffmpeg CLI: {}", path.display());
     Ok(())
 }
 
@@ -199,6 +115,93 @@ pub fn mux_webm(
          cargo build --features ffmpeg"
             .into(),
     ))
+}
+
+#[cfg(feature = "ffmpeg")]
+fn write_wav_file(
+    path: &Path,
+    audio_pcm_s16: &[i16],
+    sample_rate: u32,
+    channels: u32,
+) -> Result<()> {
+    use std::io::Write;
+
+    let channels_u16 = u16::try_from(channels).map_err(|_| {
+        MmotError::Encoder(format!("unsupported channel count for WAV: {channels}"))
+    })?;
+    let bytes_per_sample = 2u16;
+    let block_align = channels_u16
+        .checked_mul(bytes_per_sample)
+        .ok_or_else(|| MmotError::Encoder("WAV block align overflow".into()))?;
+    let byte_rate = sample_rate
+        .checked_mul(block_align as u32)
+        .ok_or_else(|| MmotError::Encoder("WAV byte rate overflow".into()))?;
+    let data_len = u32::try_from(audio_pcm_s16.len() * std::mem::size_of::<i16>())
+        .map_err(|_| MmotError::Encoder("WAV data length overflow".into()))?;
+    let riff_len = 36u32
+        .checked_add(data_len)
+        .ok_or_else(|| MmotError::Encoder("WAV RIFF length overflow".into()))?;
+
+    let mut file = std::fs::File::create(path).map_err(MmotError::Io)?;
+    file.write_all(b"RIFF").map_err(MmotError::Io)?;
+    file.write_all(&riff_len.to_le_bytes())
+        .map_err(MmotError::Io)?;
+    file.write_all(b"WAVE").map_err(MmotError::Io)?;
+    file.write_all(b"fmt ").map_err(MmotError::Io)?;
+    file.write_all(&16u32.to_le_bytes())
+        .map_err(MmotError::Io)?;
+    file.write_all(&1u16.to_le_bytes()).map_err(MmotError::Io)?;
+    file.write_all(&channels_u16.to_le_bytes())
+        .map_err(MmotError::Io)?;
+    file.write_all(&sample_rate.to_le_bytes())
+        .map_err(MmotError::Io)?;
+    file.write_all(&byte_rate.to_le_bytes())
+        .map_err(MmotError::Io)?;
+    file.write_all(&block_align.to_le_bytes())
+        .map_err(MmotError::Io)?;
+    file.write_all(&16u16.to_le_bytes())
+        .map_err(MmotError::Io)?;
+    file.write_all(b"data").map_err(MmotError::Io)?;
+    file.write_all(&data_len.to_le_bytes())
+        .map_err(MmotError::Io)?;
+
+    for sample in audio_pcm_s16 {
+        file.write_all(&sample.to_le_bytes())
+            .map_err(MmotError::Io)?;
+    }
+
+    Ok(())
+}
+
+#[cfg(feature = "ffmpeg")]
+fn run_ffmpeg_command(args: &[String]) -> Result<()> {
+    let output = std::process::Command::new("ffmpeg")
+        .args(args)
+        .output()
+        .map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                MmotError::Encoder(
+                    "ffmpeg executable not found on PATH; install FFmpeg or disable ffmpeg-backed output".into(),
+                )
+            } else {
+                MmotError::Io(e)
+            }
+        })?;
+
+    if output.status.success() {
+        return Ok(());
+    }
+
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    Err(MmotError::Encoder(format!(
+        "ffmpeg failed with status {:?}: {}",
+        output.status.code(),
+        if stderr.is_empty() {
+            "no stderr output".to_string()
+        } else {
+            stderr
+        }
+    )))
 }
 
 #[cfg(test)]
