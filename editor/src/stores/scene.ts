@@ -62,6 +62,36 @@ export const useSceneStore = defineStore('scene', () => {
   const previewImage = ref<string | null>(null)
   const dirty = ref(false)
 
+  // --- Undo/Redo ---
+  const undoStack = ref<string[]>([])
+  const redoStack = ref<string[]>([])
+  const MAX_UNDO = 50
+
+  function pushUndo() {
+    undoStack.value.push(JSON.stringify(scene.value))
+    if (undoStack.value.length > MAX_UNDO) undoStack.value.shift()
+    redoStack.value = [] // clear redo on new action
+  }
+
+  function undo() {
+    if (undoStack.value.length === 0) return
+    redoStack.value.push(JSON.stringify(scene.value))
+    const prev = undoStack.value.pop()!
+    scene.value = JSON.parse(prev)
+    schedulePreview()
+  }
+
+  function redo() {
+    if (redoStack.value.length === 0) return
+    undoStack.value.push(JSON.stringify(scene.value))
+    const next = redoStack.value.pop()!
+    scene.value = JSON.parse(next)
+    schedulePreview()
+  }
+
+  const canUndo = computed(() => undoStack.value.length > 0)
+  const canRedo = computed(() => redoStack.value.length > 0)
+
   const rootComposition = computed(() => scene.value.compositions[scene.value.meta.root])
   const layers = computed(() => rootComposition.value?.layers ?? [])
   const selectedLayer = computed(() =>
@@ -143,6 +173,7 @@ export const useSceneStore = defineStore('scene', () => {
 
   function addLayer(layer: Layer) {
     if (!rootComposition.value) return
+    pushUndo()
     rootComposition.value.layers.push(layer)
     schedulePreview()
   }
@@ -150,6 +181,7 @@ export const useSceneStore = defineStore('scene', () => {
   function removeLayer(id: string) {
     const comp = rootComposition.value
     if (!comp) return
+    pushUndo()
     comp.layers = comp.layers.filter(l => l.id !== id)
     if (selectedLayerId.value === id) selectedLayerId.value = null
     schedulePreview()
@@ -160,6 +192,7 @@ export const useSceneStore = defineStore('scene', () => {
     if (!comp) return
     if (fromIndex < 0 || fromIndex >= comp.layers.length) return
     if (toIndex < 0 || toIndex >= comp.layers.length) return
+    pushUndo()
     const [moved] = comp.layers.splice(fromIndex, 1)
     comp.layers.splice(toIndex, 0, moved)
     schedulePreview()
@@ -177,6 +210,7 @@ export const useSceneStore = defineStore('scene', () => {
   function updateLayerProperty(layerId: string, path: string, value: any) {
     const layer = layers.value.find(l => l.id === layerId)
     if (!layer) return
+    pushUndo()
     const keys = path.split('.')
     let obj: any = layer
     for (let i = 0; i < keys.length - 1; i++) {
@@ -218,6 +252,7 @@ export const useSceneStore = defineStore('scene', () => {
     toJson, fromJson,
     requestPreview, schedulePreview,
     play, pause, togglePlayback,
+    undo, redo, canUndo, canRedo,
     addLayer, removeLayer, reorderLayer, selectLayer, setFrame, updateLayerProperty,
     saveToFile, loadFromFile,
   }
