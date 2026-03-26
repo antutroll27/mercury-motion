@@ -1,4 +1,6 @@
+mod audit_format;
 mod completer;
+mod diff_format;
 mod repl;
 mod ui;
 
@@ -44,6 +46,58 @@ enum Commands {
     },
     /// Validate a .mmot.json file without rendering
     Validate { file: PathBuf },
+    /// Render a single frame to PNG
+    Frame {
+        file: PathBuf,
+        #[arg(short, long, default_value = "frame.png")]
+        output: PathBuf,
+        #[arg(short = 'n', long, default_value_t = 0)]
+        frame: u64,
+        /// Set a prop value: --prop key=value (repeatable)
+        #[arg(long = "prop", value_parser = parse_prop)]
+        props: Vec<(String, String)>,
+    },
+    /// Export to multiple aspect ratios (YouTube, Instagram, TikTok, etc.)
+    ExportAll {
+        /// Input .mmot.json file
+        file: PathBuf,
+        /// Output directory
+        #[arg(short = 'd', long, default_value = "./exports")]
+        output_dir: PathBuf,
+        /// Profiles to export (comma-separated, or "all")
+        #[arg(short, long, default_value = "all")]
+        profiles: String,
+        /// Output format: mp4, gif, webm
+        #[arg(short, long, default_value = "mp4")]
+        format: String,
+        /// Quality (1-100)
+        #[arg(short, long, default_value_t = 80)]
+        quality: u8,
+        /// Verbose output
+        #[arg(short, long)]
+        verbose: bool,
+    },
+    /// Compare two .mmot.json files and show semantic differences
+    Diff {
+        /// First .mmot.json file (base)
+        file_a: PathBuf,
+        /// Second .mmot.json file (changed)
+        file_b: PathBuf,
+        /// Disable color output
+        #[arg(long)]
+        no_color: bool,
+    },
+    /// Run WCAG accessibility audit on a .mmot.json file
+    Audit {
+        /// Input .mmot.json file
+        file: PathBuf,
+        /// WCAG contrast level: aa or aaa
+        #[arg(long, default_value = "aa")]
+        level: String,
+        /// Disable color output
+        #[arg(long)]
+        no_color: bool,
+    },
     /// Enter interactive REPL mode
     Interactive,
 }
@@ -166,8 +220,158 @@ fn run(cli: Cli) -> anyhow::Result<()> {
             println!("valid: {}", file.display());
             Ok(())
         }
+        Commands::Frame {
+            file,
+            output,
+            frame,
+            props,
+        } => {
+            let json = std::fs::read_to_string(&file)
+                .with_context(|| format!("cannot read {}", file.display()))?;
+            let cli_props: HashMap<String, String> = props.into_iter().collect();
+            let (width, height, rgba) =
+                mmot_core::pipeline::render_single_frame_with_props(&json, &cli_props, frame)?;
+            let image = image::RgbaImage::from_raw(width, height, rgba)
+                .ok_or_else(|| anyhow::anyhow!("failed to create image from RGBA buffer"))?;
+            image
+                .save(&output)
+                .with_context(|| format!("failed to write {}", output.display()))?;
+            println!("rendered frame: {}", output.display());
+            Ok(())
+        }
+        Commands::Diff {
+            file_a,
+            file_b,
+            no_color,
+        } => {
+            let json_a = std::fs::read_to_string(&file_a)
+                .with_context(|| format!("cannot read {}", file_a.display()))?;
+            let json_b = std::fs::read_to_string(&file_b)
+                .with_context(|| format!("cannot read {}", file_b.display()))?;
+
+            let scene_a = mmot_core::parser::parse(&json_a)
+                .with_context(|| format!("failed to parse {}", file_a.display()))?;
+            let scene_b = mmot_core::parser::parse(&json_b)
+                .with_context(|| format!("failed to parse {}", file_b.display()))?;
+
+            let result = mmot_core::diff::diff(&scene_a, &scene_b);
+            let output = diff_format::format_diff(&result, !no_color);
+            println!("{output}");
+
+            if result.has_changes() {
+                std::process::exit(1);
+            }
+            Ok(())
+        }
+        Commands::Audit {
+            file,
+            level,
+            no_color,
+        } => {
+            let json = std::fs::read_to_string(&file)
+                .with_context(|| format!("cannot read {}", file.display()))?;
+            let scene = mmot_core::parser::parse(&json)
+                .with_context(|| format!("failed to parse {}", file.display()))?;
+
+            let contrast_level = match level.to_lowercase().as_str() {
+                "aa" => mmot_core::accessibility::ContrastLevel::AA,
+                "aaa" => mmot_core::accessibility::ContrastLevel::AAA,
+                other => {
+                    anyhow::bail!("unsupported contrast level: '{other}' (expected aa or aaa)")
+                }
+            };
+
+            let opts = mmot_core::accessibility::AuditOptions {
+                contrast_level,
+                suppress: Vec::new(),
+            };
+
+            let report = mmot_core::accessibility::audit(&scene, &opts);
+            let output = audit_format::format_report(&report, !no_color);
+            print!("{output}");
+
+            if report.critical_count() > 0 {
+                std::process::exit(1);
+            }
+            Ok(())
+        }
         Commands::Interactive => {
             repl::run_repl();
+            Ok(())
+        }
+        Commands::ExportAll {
+            file,
+            output_dir,
+            profiles,
+            format,
+            quality,
+            verbose,
+        } => {
+            let json = std::fs::read_to_string(&file)
+                .with_context(|| format!("cannot read {}", file.display()))?;
+
+            let format = match format.to_lowercase().as_str() {
+                "mp4" => mmot_core::pipeline::OutputFormat::Mp4,
+                "gif" => mmot_core::pipeline::OutputFormat::Gif,
+                "webm" => mmot_core::pipeline::OutputFormat::Webm,
+                other => {
+                    anyhow::bail!("unsupported format: '{other}' (expected mp4, gif, or webm)")
+                }
+            };
+
+            let all_profiles = mmot_core::export::builtin_profiles();
+            let selected: Vec<mmot_core::export::ExportProfile> = if profiles == "all" {
+                all_profiles
+            } else {
+                let names: Vec<&str> = profiles.split(',').map(|s| s.trim()).collect();
+                let mut selected = Vec::new();
+                for name in &names {
+                    match all_profiles.iter().find(|p| p.name == *name) {
+                        Some(p) => selected.push(p.clone()),
+                        None => {
+                            let available: Vec<&str> = all_profiles.iter().map(|p| p.name.as_str()).collect();
+                            anyhow::bail!(
+                                "unknown profile '{}'. Available: {}",
+                                name,
+                                available.join(", ")
+                            );
+                        }
+                    }
+                }
+                selected
+            };
+
+            if verbose {
+                eprintln!("Exporting {} profiles to {}", selected.len(), output_dir.display());
+                for p in &selected {
+                    eprintln!("  {} ({}x{})", p.name, p.width, p.height);
+                }
+            }
+
+            let progress: Option<mmot_core::pipeline::ProgressFn> = if verbose {
+                Some(std::sync::Arc::new(|current, total| {
+                    eprint!("\rExporting profile {current}/{total}");
+                }))
+            } else {
+                None
+            };
+
+            let opts = mmot_core::export::ExportOptions {
+                output_dir: output_dir.clone(),
+                profiles: selected,
+                quality,
+                concurrency: None,
+                format,
+            };
+
+            let results = mmot_core::export::export_all(&json, opts, progress)?;
+            if verbose {
+                eprintln!();
+            }
+            for r in &results {
+                println!("  {} ({}x{}) -> {}", r.profile_name, r.width, r.height, r.output_path.display());
+            }
+            println!("exported {} profiles to {}", results.len(), output_dir.display());
             Ok(())
         }
         Commands::Render {
@@ -189,7 +393,9 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 "mp4" => mmot_core::pipeline::OutputFormat::Mp4,
                 "gif" => mmot_core::pipeline::OutputFormat::Gif,
                 "webm" => mmot_core::pipeline::OutputFormat::Webm,
-                other => anyhow::bail!("unsupported format: '{other}' (expected mp4, gif, or webm)"),
+                other => {
+                    anyhow::bail!("unsupported format: '{other}' (expected mp4, gif, or webm)")
+                }
             };
 
             let progress: Option<mmot_core::pipeline::ProgressFn> = if verbose {

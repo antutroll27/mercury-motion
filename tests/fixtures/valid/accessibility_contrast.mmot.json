@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "AccessibilityContrastTest",
+    "width": 640,
+    "height": 360,
+    "fps": 30,
+    "duration": 30,
+    "background": "#ffffff",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "low_contrast_text",
+          "type": "text",
+          "in": 0,
+          "out": 30,
+          "text": "Hard to read text",
+          "font": {
+            "family": "Arial",
+            "size": 32.0,
+            "weight": 400,
+            "color": "#888888"
+          },
+          "transform": {
+            "position": [320.0, 180.0],
+            "scale": [1.0, 1.0],
+            "opacity": 1.0,
+            "rotation": 0.0
+          }
+        }
+      ]
+    }
+  }
+}
