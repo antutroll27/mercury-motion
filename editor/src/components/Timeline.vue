@@ -246,23 +246,33 @@ onBeforeUnmount(() => {
 
       <!-- Track Area (right, scrollable) -->
       <div class="flex-1 overflow-x-auto overflow-y-auto relative">
-        <!-- Ruler -->
-        <div class="h-6 relative border-b border-cosmos-border sticky top-0 bg-cosmos-card z-20">
+        <!-- Ruler (click/drag to scrub) -->
+        <div
+          ref="timelineRef"
+          class="h-8 border-b border-cosmos-border sticky top-0 bg-cosmos-card z-20 cursor-pointer select-none"
+          @mousedown="handleScrubStart"
+        >
           <template v-for="tick in ticks" :key="tick.frame">
-            <div class="absolute top-0 h-full flex flex-col items-center" :style="{ left: `${tick.position}%` }">
+            <div class="absolute top-0 h-full flex flex-col items-center pointer-events-none" :style="{ left: `${tick.position}%` }">
               <div class="w-px h-3 bg-cosmos-border"></div>
               <span class="font-mono text-[9px] text-text-muted mt-0.5">{{ tick.label }}</span>
             </div>
           </template>
+
+          <!-- Playhead on ruler -->
+          <div
+            class="absolute top-0 w-0.5 h-full bg-crimson z-30 pointer-events-none"
+            :style="{ left: `${scrubberPosition}%` }"
+          >
+            <div class="absolute -bottom-1 -left-1.5 w-3.5 h-2 bg-crimson rounded-b-sm"></div>
+          </div>
         </div>
 
         <!-- Tracks -->
         <div
-          ref="timelineRef"
           class="relative"
           :class="isDragOver ? 'bg-crimson/5' : ''"
           :style="{ minHeight: Math.max(TRACK_HEIGHT, store.layers.length * TRACK_HEIGHT) + 'px' }"
-          @mousedown="handleScrubStart"
           @drop="handleTimelineDrop"
           @dragover.prevent="isDragOver = true"
           @dragleave="isDragOver = false"
@@ -307,7 +317,7 @@ onBeforeUnmount(() => {
             class="absolute top-0 w-0.5 bg-crimson z-10 pointer-events-none"
             :style="{ left: `${scrubberPosition}%`, height: Math.max(TRACK_HEIGHT, store.layers.length * TRACK_HEIGHT) + 'px' }"
           >
-            <div class="absolute -top-1 -left-1.5 w-3.5 h-3 bg-crimson rounded-sm"></div>
+            <div class="absolute -top-2 -left-1.5 w-3.5 h-5 bg-crimson rounded-sm"></div>
           </div>
         </div>
       </div>

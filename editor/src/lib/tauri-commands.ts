@@ -1,5 +1,3 @@
-import { invoke } from '@tauri-apps/api/core'
-
 export interface SceneInfo {
   valid: boolean
   width?: number
@@ -10,6 +8,17 @@ export interface SceneInfo {
   composition_count?: number
   root_layer_count?: number
   error?: string
+}
+
+// Detect if running inside Tauri
+const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__
+
+async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  if (!isTauri) {
+    throw new Error(`Tauri not available (browser mode) — ${cmd} skipped`)
+  }
+  const { invoke: tauriInvoke } = await import('@tauri-apps/api/core')
+  return tauriInvoke<T>(cmd, args)
 }
 
 export async function validateScene(json: string): Promise<SceneInfo> {
