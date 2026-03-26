@@ -6,6 +6,33 @@ const store = useSceneStore()
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const isTauri = ref(false)
 
+// Image cache: src URL → loaded HTMLImageElement
+const imageCache = new Map<string, HTMLImageElement>()
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  if (imageCache.has(src)) return Promise.resolve(imageCache.get(src)!)
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => { imageCache.set(src, img); resolve(img) }
+    img.onerror = () => reject(new Error(`Failed to load image: ${src}`))
+    img.src = src
+  })
+}
+
+// Preload all image/video layer sources
+async function preloadImages() {
+  const comp = store.scene.compositions[store.scene.meta.root]
+  if (!comp) return
+  const loads: Promise<any>[] = []
+  for (const layer of comp.layers) {
+    if ((layer.type === 'image' || layer.type === 'video') && (layer as any).src) {
+      loads.push(loadImage((layer as any).src).catch(() => {}))
+    }
+  }
+  await Promise.all(loads)
+}
+
 // Check if we're in Tauri
 onMounted(async () => {
   try {
@@ -34,12 +61,29 @@ watch(() => store.previewImage, (img) => {
 // Watch for any layer changes in browser mode
 watch(() => JSON.stringify(store.scene), () => {
   if (!isTauri.value) {
-    nextTick(() => renderBrowserPreview())
+    preloadImages().then(() => nextTick(() => renderBrowserPreview()))
   }
 }, { deep: false })
 
 function parseHexColor(hex: string): string {
   return hex.startsWith('#') ? hex : `#${hex}`
+}
+
+// Map mmot blend modes to Canvas composite operations
+const blendModeMap: Record<string, GlobalCompositeOperation> = {
+  normal: 'source-over',
+  multiply: 'multiply',
+  screen: 'screen',
+  overlay: 'overlay',
+  darken: 'darken',
+  lighten: 'lighten',
+  color_dodge: 'color-dodge',
+  color_burn: 'color-burn',
+  hard_light: 'hard-light',
+  soft_light: 'soft-light',
+  difference: 'difference',
+  exclusion: 'exclusion',
+  add: 'lighter',
 }
 
 function renderBrowserPreview() {
@@ -79,6 +123,105 @@ function renderBrowserPreview() {
     ctx.translate(pos[0], pos[1])
     ctx.rotate((rotation * Math.PI) / 180)
     ctx.scale(scale[0], scale[1])
+
+    // Blend mode
+    if ((layer as any).blend_mode && blendModeMap[(layer as any).blend_mode]) {
+      ctx.globalCompositeOperation = blendModeMap[(layer as any).blend_mode]
+    }
+
+    // Apply effects
+    const effects = (layer as any).effects as any[] | undefined
+    if (effects?.length) {
+      const filters: string[] = []
+      for (const effect of effects) {
+        switch (effect.type) {
+          case 'gaussian_blur':
+            filters.push(`blur(${effect.radius || 5}px)`)
+            break
+          case 'drop_shadow':
+            ctx.shadowColor = effect.color || '#000000'
+            ctx.shadowBlur = effect.blur || 8
+            ctx.shadowOffsetX = effect.offset_x || 0
+            ctx.shadowOffsetY = effect.offset_y || 4
+            break
+          case 'glow':
+            ctx.shadowColor = effect.color || '#ffffff'
+            ctx.shadowBlur = (effect.radius || 10) * (effect.intensity || 1)
+            ctx.shadowOffsetX = 0
+            ctx.shadowOffsetY = 0
+            break
+          case 'brightness_contrast': {
+            const b = 1 + (effect.brightness || 0) / 100
+            const c = 1 + (effect.contrast || 0) / 100
+            filters.push(`brightness(${b}) contrast(${c})`)
+            break
+          }
+          case 'hue_saturation': {
+            const h = effect.hue || 0
+            const s = 1 + (effect.saturation || 0) / 100
+            const l = 1 + (effect.lightness || 0) / 100
+            filters.push(`hue-rotate(${h}deg) saturate(${s}) brightness(${l})`)
+            break
+          }
+          case 'invert':
+            filters.push('invert(1)')
+            break
+          case 'tint':
+            // Approximate tint with sepia + hue-rotate
+            filters.push(`sepia(${effect.amount || 1})`)
+            break
+        }
+      }
+      if (filters.length > 0) {
+        ctx.filter = filters.join(' ')
+      }
+    }
+
+    // Apply masks
+    const masks = (layer as any).masks as any[] | undefined
+    if (masks?.length) {
+      for (const mask of masks) {
+        const path = mask.path
+        if (!path) continue
+
+        ctx.beginPath()
+        switch (path.type) {
+          case 'rect':
+            ctx.rect(
+              (path.x || 0) - pos[0],
+              (path.y || 0) - pos[1],
+              path.width || 100,
+              path.height || 100
+            )
+            break
+          case 'ellipse':
+            ctx.ellipse(
+              (path.cx || 0) - pos[0],
+              (path.cy || 0) - pos[1],
+              path.rx || 50,
+              path.ry || 50,
+              0, 0, Math.PI * 2
+            )
+            break
+          case 'path':
+            if (path.points?.length) {
+              ctx.moveTo(path.points[0][0], path.points[0][1])
+              for (let i = 1; i < path.points.length; i++) {
+                ctx.lineTo(path.points[i][0], path.points[i][1])
+              }
+              if (path.closed !== false) ctx.closePath()
+            }
+            break
+        }
+
+        // Apply mask mode
+        if (mask.mode === 'subtract') {
+          ctx.clip('evenodd')
+        } else {
+          ctx.clip()
+        }
+      }
+    }
 
     switch (layer.type) {
       case 'solid': {
@@ -142,6 +285,30 @@ function renderBrowserPreview() {
             if (strokeSpec) { ctx.strokeStyle = parseHexColor(strokeSpec.color); ctx.lineWidth = strokeSpec.width; ctx.stroke() }
             break
           }
+          case 'polygon': {
+            if (shape.points?.length) {
+              ctx.beginPath()
+              ctx.moveTo(shape.points[0][0], shape.points[0][1])
+              for (let i = 1; i < shape.points.length; i++) {
+                ctx.lineTo(shape.points[i][0], shape.points[i][1])
+              }
+              ctx.closePath()
+              if (fill) { ctx.fillStyle = fill; ctx.fill() }
+              if (strokeSpec) { ctx.strokeStyle = parseHexColor(strokeSpec.color); ctx.lineWidth = strokeSpec.width; ctx.stroke() }
+            }
+            break
+          }
+          case 'line': {
+            ctx.beginPath()
+            ctx.moveTo(shape.x1 || 0, shape.y1 || 0)
+            ctx.lineTo(shape.x2 || 100, shape.y2 || 0)
+            if (strokeSpec) {
+              ctx.strokeStyle = parseHexColor(strokeSpec.color)
+              ctx.lineWidth = strokeSpec.width || 2
+              ctx.stroke()
+            }
+            break
+          }
         }
         break
       }
@@ -164,10 +331,41 @@ function renderBrowserPreview() {
         ctx.fillRect(-meta.width / 2, -meta.height / 2, meta.width, meta.height)
         break
       }
+      case 'image':
+      case 'video': {
+        const src = (layer as any).src
+        if (src && imageCache.has(src)) {
+          const img = imageCache.get(src)!
+          const iw = img.naturalWidth
+          const ih = img.naturalHeight
+          ctx.drawImage(img, -iw / 2, -ih / 2, iw, ih)
+        } else if (src) {
+          // Image not loaded yet — show placeholder
+          ctx.strokeStyle = '#669BBC'
+          ctx.lineWidth = 2
+          ctx.strokeRect(-50, -30, 100, 60)
+          ctx.fillStyle = '#669BBC'
+          ctx.font = '12px Inter, sans-serif'
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(layer.type === 'video' ? '▶ loading...' : '◻ loading...', 0, 0)
+          // Trigger async load
+          loadImage(src).then(() => renderBrowserPreview())
+        }
+        break
+      }
       case 'null':
         // Invisible — transform only
         break
     }
+
+    // Reset effects
+    ctx.filter = 'none'
+    ctx.shadowColor = 'transparent'
+    ctx.shadowBlur = 0
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = 0
+    ctx.globalCompositeOperation = 'source-over'
 
     ctx.restore()
   }
