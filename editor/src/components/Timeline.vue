@@ -72,7 +72,6 @@ function getKeysRowTop(layerIdx: number, propIdx: number): number {
   return top + KEYS_HEADER_HEIGHT + propIdx * KEYS_PROP_HEIGHT
 }
 
-// @ts-ignore TS6133 — reserved for dope sheet view (not yet wired to template)
 const keysTotalHeight = computed(() => {
   let total = 0
   for (const layer of store.layers) {
@@ -83,7 +82,6 @@ const keysTotalHeight = computed(() => {
 
 // --- Easing picker ---
 
-// @ts-ignore TS6133 — reserved for dope sheet easing picker (not yet wired to template)
 function handleKeyframeContextMenu(e: MouseEvent, layerId: string, path: string, frame: number) {
   e.preventDefault()
   e.stopPropagation()
@@ -92,7 +90,6 @@ function handleKeyframeContextMenu(e: MouseEvent, layerId: string, path: string,
   easingPickerRef.value?.open()
 }
 
-// @ts-ignore TS6133 — reserved for dope sheet easing picker (not yet wired to template)
 function handleEasingSelect(easing: string) {
   if (!easingPickerContext.value) return
   const { layerId, path, frame } = easingPickerContext.value
@@ -406,8 +403,9 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <!-- Tracks -->
+        <!-- Tracks: Bars mode -->
         <div
+          v-if="viewMode === 'bars'"
           class="relative"
           :class="isDragOver ? 'bg-crimson/5' : ''"
           :style="{ minHeight: Math.max(TRACK_HEIGHT, store.layers.length * TRACK_HEIGHT) + 'px' }"
@@ -458,6 +456,74 @@ onBeforeUnmount(() => {
             <div class="absolute -top-2 -left-1.5 w-3.5 h-5 bg-crimson rounded-sm"></div>
           </div>
         </div>
+
+        <!-- Tracks: Keys (dope sheet) mode -->
+        <div
+          v-if="viewMode === 'keys'"
+          class="relative"
+          :class="isDragOver ? 'bg-crimson/5' : ''"
+          :style="{ minHeight: keysTotalHeight + 'px' }"
+          @drop="handleTimelineDrop"
+          @dragover.prevent="isDragOver = true"
+          @dragleave="isDragOver = false"
+        >
+          <template v-for="(layer, layerIdx) in store.layers" :key="'keys-' + layer.id">
+            <!-- Layer header row -->
+            <div
+              class="absolute w-full border-b border-cosmos-border/30 flex items-center cursor-pointer"
+              :class="layer.id === store.selectedLayerId ? 'bg-crimson/5' : ''"
+              :style="{ top: getKeysRowTop(layerIdx, -1) + 'px', height: KEYS_HEADER_HEIGHT + 'px' }"
+              @click="store.selectLayer(layer.id)"
+            >
+              <span class="font-mono text-[10px] text-text-primary ml-2 truncate">{{ layer.id }}</span>
+            </div>
+
+            <!-- Property sub-rows -->
+            <template v-for="(propInfo, propIdx) in getAnimatedProps(layer)" :key="'prop-' + layer.id + '-' + propInfo.path">
+              <div
+                class="absolute w-full border-b border-cosmos-border/10"
+                :class="propIdx % 2 === 0 ? 'bg-cosmos-deep/20' : ''"
+                :style="{ top: getKeysRowTop(layerIdx, propIdx) + 'px', height: KEYS_PROP_HEIGHT + 'px' }"
+              >
+                <!-- Keyframe diamonds -->
+                <template v-if="propInfo.keyframes">
+                  <div
+                    v-for="(kf, kfIdx) in propInfo.keyframes"
+                    :key="kfIdx"
+                    class="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rotate-45 cursor-pointer transition-colors"
+                    :class="kf.t === store.currentFrame ? 'bg-yellow-400 shadow-[0_0_6px_rgba(250,204,21,0.5)]' : 'bg-marble/70 hover:bg-crimson'"
+                    :style="{ left: `calc(${(kf.t / store.totalFrames) * 100}% - 5px)` }"
+                    :title="`${propInfo.label} @ frame ${kf.t}`"
+                    @click.stop="store.setFrame(kf.t)"
+                    @contextmenu="handleKeyframeContextMenu($event, layer.id, propInfo.path, kf.t)"
+                  />
+                </template>
+
+                <!-- Empty row indicator when no keyframes -->
+                <template v-if="!propInfo.keyframes">
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <span class="font-mono text-[8px] text-text-muted/30 uppercase">no keys</span>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </template>
+
+          <!-- Playhead -->
+          <div
+            class="absolute top-0 w-0.5 bg-crimson z-10 pointer-events-none"
+            :style="{ left: `${scrubberPosition}%`, height: keysTotalHeight + 'px' }"
+          >
+            <div class="absolute -top-2 -left-1.5 w-3.5 h-5 bg-crimson rounded-sm"></div>
+          </div>
+        </div>
+
+        <!-- Easing Curve Picker -->
+        <EasingPicker
+          ref="easingPickerRef"
+          :style="{ left: easingPickerPos.x + 'px', top: easingPickerPos.y + 'px', position: 'fixed' }"
+          @select="handleEasingSelect"
+        />
       </div>
     </div>
   </div>
