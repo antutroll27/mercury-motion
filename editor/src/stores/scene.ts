@@ -122,11 +122,16 @@ export const useSceneStore = defineStore('scene', () => {
   async function requestPreview() {
     try {
       const json = toJson()
+      console.log('[mmot] requesting preview, frame:', currentFrame.value, 'layers:', layers.value.length)
       const dataUrl = await renderFrame(json, currentFrame.value)
-      previewImage.value = dataUrl
-      dirty.value = false
+      if (dataUrl) {
+        previewImage.value = dataUrl
+        dirty.value = false
+        console.log('[mmot] preview rendered successfully')
+      }
     } catch (e) {
-      console.error('Preview render failed:', e)
+      // Expected in browser mode (no Tauri backend)
+      console.warn('[mmot] preview render failed (expected in browser mode):', e)
     }
   }
 
