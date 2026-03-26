@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick } from 'vue'
 import { useSceneStore } from '../stores/scene'
+import CanvasGizmos from './CanvasGizmos.vue'
 
 const store = useSceneStore()
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -425,6 +426,9 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
         </div>
         <span class="font-mono text-xs text-text-muted uppercase tracking-widest">Rendering...</span>
       </div>
+
+      <!-- Transform gizmos overlay -->
+      <CanvasGizmos />
     </div>
   </div>
 </template>
