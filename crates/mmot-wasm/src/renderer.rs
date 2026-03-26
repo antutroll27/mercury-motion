@@ -92,10 +92,12 @@ fn build_transform(layer: &ResolvedLayer, _width: u32, _height: u32) -> Transfor
     let tx = t.position.x as f32;
     let ty = t.position.y as f32;
 
+    // Match native Skia renderer order: translate to position, rotate, scale
+    // This ensures rotation and scale happen around the layer's position
     Transform::identity()
         .post_translate(tx, ty)
+        .post_rotate_at(t.rotation as f32, 0.0, 0.0)
         .post_scale(t.scale.x as f32, t.scale.y as f32)
-        .post_rotate_at(t.rotation as f32, tx, ty)
 }
 
 /// Draw a solid color rectangle.
@@ -147,12 +149,17 @@ fn draw_image(
     if let Some(src_pixmap) = tiny_skia::PixmapRef::from_bytes(data, width, height) {
         let mut paint = tiny_skia::PixmapPaint::default();
         paint.opacity = opacity;
+        // Apply transform to position the image correctly
+        // draw_pixmap uses integer offsets, so extract translation from transform
         let img_transform = transform.pre_translate(-(width as f32) / 2.0, -(height as f32) / 2.0);
-        pixmap.draw_pixmap(0, 0, src_pixmap, &paint, Transform::identity(), None);
-        // Note: tiny-skia's draw_pixmap doesn't support arbitrary transforms.
-        // For full transform support, we'd need to use a shader-based approach.
-        // This is a simplified implementation for the WASM preview.
-        let _ = img_transform;
+        pixmap.draw_pixmap(
+            img_transform.tx as i32,
+            img_transform.ty as i32,
+            src_pixmap,
+            &paint,
+            Transform::identity(),
+            None,
+        );
     }
 }
 
