@@ -27,12 +27,12 @@ impl Completer for MmotCompleter {
     type Candidate = Pair;
 
     fn complete(&self, line: &str, pos: usize, _ctx: &Context<'_>) -> rustyline::Result<(usize, Vec<Pair>)> {
-        let line_up_to = &line[..pos];
+        let line_up_to = line.get(..pos).unwrap_or(line);
         let tokens: Vec<&str> = line_up_to.split_whitespace().collect();
 
         if tokens.is_empty() || (tokens.len() == 1 && !line_up_to.ends_with(' ')) {
             let prefix = tokens.first().copied().unwrap_or("");
-            let start = pos - prefix.len();
+            let start = pos.saturating_sub(prefix.len());
             let matches: Vec<Pair> = COMMANDS.iter()
                 .filter(|c| c.starts_with(prefix))
                 .map(|c| Pair { display: c.to_string(), replacement: c.to_string() })
@@ -42,7 +42,7 @@ impl Completer for MmotCompleter {
 
         let cmd = tokens[0];
         let partial = if line_up_to.ends_with(' ') { "" } else { tokens.last().copied().unwrap_or("") };
-        let start = pos - partial.len();
+        let start = pos.saturating_sub(partial.len());
 
         if cmd == "render" && partial.starts_with('-') {
             let matches: Vec<Pair> = RENDER_FLAGS.iter()
