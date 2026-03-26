@@ -1,0 +1,103 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "YouTubeIntro",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "duration": 90,
+    "background": "#0a0a0f",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "bg",
+          "type": "gradient",
+          "in": 0,
+          "out": 90,
+          "gradient": {
+            "gradient_type": "radial",
+            "center": [0.5, 0.5],
+            "radius": 1.0,
+            "colors": [
+              { "offset": 0.0, "color": "#141420" },
+              { "offset": 0.6, "color": "#0c0c18" },
+              { "offset": 1.0, "color": "#0a0a0f" }
+            ]
+          },
+          "fill": "parent",
+          "transform": { "position": [960, 540] }
+        },
+        {
+          "id": "channel_name",
+          "type": "text",
+          "in": 5,
+          "out": 90,
+          "text": "CHANNEL NAME",
+          "font": {
+            "family": "Arial",
+            "size": 80.0,
+            "weight": 700,
+            "color": "#f5f0e8"
+          },
+          "transform": {
+            "position": [960, 480],
+            "scale": [
+              { "t": 0, "v": [0.0, 0.0], "easing": { "type": "spring", "stiffness": 180.0, "damping": 14.0, "mass": 1.0 } },
+              { "t": 30, "v": [1.0, 1.0] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 10, "v": 1.0 }
+            ]
+          },
+          "effects": [
+            { "type": "drop_shadow", "color": "#000000", "offset_x": 0.0, "offset_y": 4.0, "blur": 15.0, "opacity": 0.6 }
+          ]
+        },
+        {
+          "id": "separator",
+          "type": "shape",
+          "in": 20,
+          "out": 90,
+          "shape": {
+            "shape_type": "rect",
+            "width": 400,
+            "height": 2,
+            "fill": "#c1121f"
+          },
+          "transform": {
+            "position": [960, 530],
+            "scale": [
+              { "t": 0, "v": [0.0, 1.0], "easing": { "type": "cubic_bezier", "x1": 0.16, "y1": 1.0, "x2": 0.3, "y2": 1.0 } },
+              { "t": 20, "v": [1.0, 1.0] }
+            ],
+            "opacity": 1.0
+          }
+        },
+        {
+          "id": "subscribe_text",
+          "type": "text",
+          "in": 40,
+          "out": 90,
+          "text": "SUBSCRIBE",
+          "font": {
+            "family": "Arial",
+            "size": 28.0,
+            "weight": 400,
+            "color": "#a09890"
+          },
+          "transform": {
+            "position": [960, 580],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 20, "v": 1.0 }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

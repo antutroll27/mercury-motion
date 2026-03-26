@@ -1,0 +1,136 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "TikTokOverlay",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "duration": 60,
+    "background": "#00000000",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "dark_overlay",
+          "type": "solid",
+          "in": 0,
+          "out": 60,
+          "color": "#000000",
+          "fill": "parent",
+          "transform": {
+            "position": [540, 960],
+            "opacity": 0.3
+          }
+        },
+        {
+          "id": "username",
+          "type": "text",
+          "in": 5,
+          "out": 60,
+          "text": "@username",
+          "font": {
+            "family": "Arial",
+            "size": 36.0,
+            "weight": 700,
+            "color": "#ffffff"
+          },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [-200, 1650], "easing": { "type": "cubic_bezier", "x1": 0.16, "y1": 1.0, "x2": 0.3, "y2": 1.0 } },
+              { "t": 15, "v": [300, 1650] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 10, "v": 1.0 }
+            ]
+          },
+          "effects": [
+            { "type": "glow", "color": "#ffffff", "radius": 10.0, "intensity": 0.3 }
+          ]
+        },
+        {
+          "id": "caption",
+          "type": "text",
+          "in": 15,
+          "out": 60,
+          "text": "Your caption goes here",
+          "font": {
+            "family": "Arial",
+            "size": 22.0,
+            "weight": 400,
+            "color": "#e0e0e0"
+          },
+          "transform": {
+            "position": [300, 1710],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 15, "v": 1.0 }
+            ]
+          }
+        },
+        {
+          "id": "icon_like",
+          "type": "shape",
+          "in": 20,
+          "out": 60,
+          "shape": {
+            "shape_type": "ellipse",
+            "width": 44,
+            "height": 44,
+            "fill": "#ff2d55"
+          },
+          "transform": {
+            "position": [1020, 900],
+            "scale": [
+              { "t": 0, "v": [0.0, 0.0], "easing": { "type": "spring", "stiffness": 260.0, "damping": 14.0, "mass": 1.0 } },
+              { "t": 15, "v": [1.0, 1.0] }
+            ],
+            "opacity": 0.9
+          }
+        },
+        {
+          "id": "icon_comment",
+          "type": "shape",
+          "in": 24,
+          "out": 60,
+          "shape": {
+            "shape_type": "ellipse",
+            "width": 44,
+            "height": 44,
+            "fill": "#ffffff"
+          },
+          "transform": {
+            "position": [1020, 980],
+            "scale": [
+              { "t": 0, "v": [0.0, 0.0], "easing": { "type": "spring", "stiffness": 260.0, "damping": 14.0, "mass": 1.0 } },
+              { "t": 15, "v": [1.0, 1.0] }
+            ],
+            "opacity": 0.9
+          }
+        },
+        {
+          "id": "icon_share",
+          "type": "shape",
+          "in": 28,
+          "out": 60,
+          "shape": {
+            "shape_type": "ellipse",
+            "width": 44,
+            "height": 44,
+            "fill": "#ffffff"
+          },
+          "transform": {
+            "position": [1020, 1060],
+            "scale": [
+              { "t": 0, "v": [0.0, 0.0], "easing": { "type": "spring", "stiffness": 260.0, "damping": 14.0, "mass": 1.0 } },
+              { "t": 15, "v": [1.0, 1.0] }
+            ],
+            "opacity": 0.9
+          }
+        }
+      ]
+    }
+  }
+}
