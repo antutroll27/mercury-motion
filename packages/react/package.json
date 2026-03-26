@@ -1,0 +1,22 @@
+{
+  "name": "@mmot/react",
+  "version": "0.1.0",
+  "description": "Write React. Render natively. Remotion-compatible API for Mercury-Motion.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
+    "./render": { "import": "./dist/render.js", "types": "./dist/render.d.ts" }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test dist/test.js"
+  },
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/antutroll27/mercury-motion" },
+  "keywords": ["remotion", "video", "animation", "react", "mercury-motion", "mmot"],
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
