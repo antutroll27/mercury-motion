@@ -1,11 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from 'vue'
 import { useSceneStore } from '../stores/scene'
+import EasingPicker from './EasingPicker.vue'
 
 const store = useSceneStore()
 const timelineRef = ref<HTMLDivElement | null>(null)
 const isScrubbing = ref(false)
 const isDragOver = ref(false)
+
+// View mode toggle: bars (default) or keys (dope sheet)
+const viewMode = ref<'bars' | 'keys'>('bars')
+
+// Easing picker state
+const easingPickerRef = ref<InstanceType<typeof EasingPicker> | null>(null)
+const easingPickerPos = ref({ x: 0, y: 0 })
+const easingPickerContext = ref<{ layerId: string; path: string; frame: number } | null>(null)
 
 // Layer drag reorder
 const dragFromIdx = ref<number | null>(null)
@@ -18,6 +27,95 @@ const dragOrigIn = ref(0)
 const dragOrigOut = ref(0)
 
 const TRACK_HEIGHT = 32
+const KEYS_HEADER_HEIGHT = 24
+const KEYS_PROP_HEIGHT = 20
+
+// --- Dope sheet helpers ---
+
+interface AnimatedProp {
+  path: string
+  label: string
+  keyframes: { t: number; v: any }[] | null
+}
+
+function getAnimatedProps(layer: any): AnimatedProp[] {
+  const props: AnimatedProp[] = []
+  const t = layer.transform
+
+  const checkProp = (val: any, path: string, label: string) => {
+    if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object' && 't' in val[0]) {
+      props.push({ path, label, keyframes: val })
+    }
+  }
+
+  checkProp(t?.position, 'transform.position', 'Position')
+  checkProp(t?.scale, 'transform.scale', 'Scale')
+  checkProp(t?.rotation, 'transform.rotation', 'Rotation')
+  checkProp(t?.opacity, 'transform.opacity', 'Opacity')
+
+  // If no animated props, show placeholders so the dope sheet is not empty
+  if (props.length === 0) {
+    props.push({ path: 'transform.position', label: 'Position', keyframes: null })
+    props.push({ path: 'transform.opacity', label: 'Opacity', keyframes: null })
+  }
+
+  return props
+}
+
+function getKeysRowTop(layerIdx: number, propIdx: number): number {
+  let top = 0
+  for (let i = 0; i < layerIdx; i++) {
+    const layer = store.layers[i]
+    top += KEYS_HEADER_HEIGHT + getAnimatedProps(layer).length * KEYS_PROP_HEIGHT
+  }
+  if (propIdx < 0) return top // Header row
+  return top + KEYS_HEADER_HEIGHT + propIdx * KEYS_PROP_HEIGHT
+}
+
+// @ts-ignore TS6133 — reserved for dope sheet view (not yet wired to template)
+const keysTotalHeight = computed(() => {
+  let total = 0
+  for (const layer of store.layers) {
+    total += KEYS_HEADER_HEIGHT + getAnimatedProps(layer).length * KEYS_PROP_HEIGHT
+  }
+  return Math.max(TRACK_HEIGHT, total)
+})
+
+// --- Easing picker ---
+
+// @ts-ignore TS6133 — reserved for dope sheet easing picker (not yet wired to template)
+function handleKeyframeContextMenu(e: MouseEvent, layerId: string, path: string, frame: number) {
+  e.preventDefault()
+  e.stopPropagation()
+  easingPickerContext.value = { layerId, path, frame }
+  easingPickerPos.value = { x: e.clientX, y: e.clientY }
+  easingPickerRef.value?.open()
+}
+
+// @ts-ignore TS6133 — reserved for dope sheet easing picker (not yet wired to template)
+function handleEasingSelect(easing: string) {
+  if (!easingPickerContext.value) return
+  const { layerId, path, frame } = easingPickerContext.value
+  // Find the keyframe and set its easing
+  const layer = store.layers.find(l => l.id === layerId)
+  if (!layer) return
+
+  const keys = path.split('.')
+  let obj: any = layer
+  for (const k of keys) {
+    obj = obj?.[k]
+    if (obj == null) return
+  }
+
+  if (Array.isArray(obj)) {
+    const kf = obj.find((k: any) => k.t === frame)
+    if (kf) {
+      kf.easing = easing
+      store.schedulePreview()
+    }
+  }
+  easingPickerContext.value = null
+}
 
 const scrubberPosition = computed(() => {
   if (store.totalFrames <= 0) return 0
@@ -198,6 +296,19 @@ onBeforeUnmount(() => {
         @click="store.setFrame(store.totalFrames - 1)"
       >⟩⟩</button>
 
+      <div class="flex gap-1 ml-3">
+        <button
+          class="px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider rounded transition-colors"
+          :class="viewMode === 'bars' ? 'bg-crimson/20 text-crimson' : 'text-text-muted hover:text-text-primary'"
+          @click="viewMode = 'bars'"
+        >Bars</button>
+        <button
+          class="px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider rounded transition-colors"
+          :class="viewMode === 'keys' ? 'bg-crimson/20 text-crimson' : 'text-text-muted hover:text-text-primary'"
+          @click="viewMode = 'keys'"
+        >Keys</button>
+      </div>
+
       <div class="flex-1" />
 
       <div class="font-mono text-2xl tracking-widest text-text-primary tabular-nums">
@@ -212,31 +323,58 @@ onBeforeUnmount(() => {
         <!-- Ruler spacer -->
         <div class="h-6 border-b border-cosmos-border"></div>
 
-        <!-- Track labels -->
-        <div
-          v-for="(layer, idx) in store.layers"
-          :key="layer.id"
-          class="flex items-center gap-1.5 px-2 border-b border-cosmos-border/40 cursor-grab active:cursor-grabbing select-none"
-          :style="{ height: TRACK_HEIGHT + 'px' }"
-          :class="[
-            layer.id === store.selectedLayerId ? 'bg-crimson/10' : 'hover:bg-cosmos-deep/50',
-            dragOverIdx === idx ? 'border-t-2 border-t-crimson' : ''
-          ]"
-          draggable="true"
-          @click="store.selectLayer(layer.id)"
-          @dragstart="handleTrackDragStart($event, idx)"
-          @dragover="handleTrackDragOver($event, idx)"
-          @drop="handleTrackDrop($event, idx)"
-          @dragend="handleTrackDragEnd"
-        >
-          <span class="font-mono text-[9px] text-text-muted/40">⋮⋮</span>
-          <span class="font-mono text-[10px] w-3 text-center" :class="layer.id === store.selectedLayerId ? 'text-crimson' : 'text-text-muted'">
-            {{ layerTypeIcons[layer.type] || '?' }}
-          </span>
-          <span class="font-mono text-[11px] text-text-primary truncate flex-1">
-            {{ layer.id }}
-          </span>
-        </div>
+        <!-- Track labels: Bars mode -->
+        <template v-if="viewMode === 'bars'">
+          <div
+            v-for="(layer, idx) in store.layers"
+            :key="layer.id"
+            class="flex items-center gap-1.5 px-2 border-b border-cosmos-border/40 cursor-grab active:cursor-grabbing select-none"
+            :style="{ height: TRACK_HEIGHT + 'px' }"
+            :class="[
+              layer.id === store.selectedLayerId ? 'bg-crimson/10' : 'hover:bg-cosmos-deep/50',
+              dragOverIdx === idx ? 'border-t-2 border-t-crimson' : ''
+            ]"
+            draggable="true"
+            @click="store.selectLayer(layer.id)"
+            @dragstart="handleTrackDragStart($event, idx)"
+            @dragover="handleTrackDragOver($event, idx)"
+            @drop="handleTrackDrop($event, idx)"
+            @dragend="handleTrackDragEnd"
+          >
+            <span class="font-mono text-[9px] text-text-muted/40">⋮⋮</span>
+            <span class="font-mono text-[10px] w-3 text-center" :class="layer.id === store.selectedLayerId ? 'text-crimson' : 'text-text-muted'">
+              {{ layerTypeIcons[layer.type] || '?' }}
+            </span>
+            <span class="font-mono text-[11px] text-text-primary truncate flex-1">
+              {{ layer.id }}
+            </span>
+          </div>
+        </template>
+
+        <!-- Track labels: Keys (dope sheet) mode -->
+        <template v-if="viewMode === 'keys'">
+          <template v-for="(layer, _layerIdx) in store.layers" :key="'header-keys-' + layer.id">
+            <div
+              class="flex items-center gap-1.5 px-2 border-b border-cosmos-border/30 cursor-pointer select-none"
+              :class="layer.id === store.selectedLayerId ? 'bg-crimson/10 text-crimson' : 'text-text-primary hover:bg-cosmos-deep/50'"
+              :style="{ height: KEYS_HEADER_HEIGHT + 'px' }"
+              @click="store.selectLayer(layer.id)"
+            >
+              <span class="font-mono text-[10px] w-3 text-center" :class="layer.id === store.selectedLayerId ? 'text-crimson' : 'text-text-muted'">
+                {{ layerTypeIcons[layer.type] || '?' }}
+              </span>
+              <span class="font-mono text-[10px] truncate flex-1">{{ layer.id }}</span>
+            </div>
+            <div
+              v-for="propInfo in getAnimatedProps(layer)"
+              :key="'header-prop-' + layer.id + '-' + propInfo.path"
+              class="flex items-center px-4 border-b border-cosmos-border/10 font-mono text-[9px] text-text-muted"
+              :style="{ height: KEYS_PROP_HEIGHT + 'px' }"
+            >
+              {{ propInfo.label }}
+            </div>
+          </template>
+        </template>
 
         <!-- Empty state -->
         <div v-if="store.layers.length === 0" class="flex items-center justify-center py-4">

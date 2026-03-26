@@ -228,6 +228,90 @@ export const useSceneStore = defineStore('scene', () => {
     schedulePreview()
   }
 
+  // --- Keyframe helpers ---
+
+  function addKeyframe(layerId: string, path: string, frame: number, value: any) {
+    const layer = layers.value.find(l => l.id === layerId)
+    if (!layer) return
+    pushUndo()
+
+    const keys = path.split('.')
+    let parent: any = layer
+    for (let i = 0; i < keys.length - 1; i++) {
+      parent = parent[keys[i]]
+      if (!parent) return
+    }
+    const prop = keys[keys.length - 1]
+    const current = parent[prop]
+
+    if (Array.isArray(current) && current.length > 0 && typeof current[0] === 'object' && 't' in current[0]) {
+      // Already animated — add or update keyframe
+      const existing = current.findIndex((k: any) => k.t === frame)
+      if (existing >= 0) {
+        current[existing].v = value
+      } else {
+        current.push({ t: frame, v: value })
+        current.sort((a: any, b: any) => a.t - b.t)
+      }
+    } else {
+      // Convert static value to animated
+      const staticVal = current
+      parent[prop] = [
+        { t: 0, v: staticVal },
+        { t: frame, v: value }
+      ]
+    }
+    schedulePreview()
+  }
+
+  function removeKeyframe(layerId: string, path: string, frame: number) {
+    const layer = layers.value.find(l => l.id === layerId)
+    if (!layer) return
+    pushUndo()
+
+    const keys = path.split('.')
+    let parent: any = layer
+    for (let i = 0; i < keys.length - 1; i++) {
+      parent = parent[keys[i]]
+      if (!parent) return
+    }
+    const prop = keys[keys.length - 1]
+    const current = parent[prop]
+
+    if (Array.isArray(current) && current.length > 0 && typeof current[0] === 'object' && 't' in current[0]) {
+      const filtered = current.filter((k: any) => k.t !== frame)
+      if (filtered.length <= 1) {
+        // Convert back to static value
+        parent[prop] = filtered.length === 1 ? filtered[0].v : 0
+      } else {
+        parent[prop] = filtered
+      }
+    }
+    schedulePreview()
+  }
+
+  function getKeyframes(layerId: string, path: string): { t: number; v: any }[] | null {
+    const layer = layers.value.find(l => l.id === layerId)
+    if (!layer) return null
+
+    const keys = path.split('.')
+    let obj: any = layer
+    for (const k of keys) {
+      obj = obj?.[k]
+      if (obj == null) return null
+    }
+
+    if (Array.isArray(obj) && obj.length > 0 && typeof obj[0] === 'object' && 't' in obj[0]) {
+      return obj
+    }
+    return null
+  }
+
+  function hasKeyframeAtFrame(layerId: string, path: string, frame: number): boolean {
+    const kfs = getKeyframes(layerId, path)
+    return kfs?.some(k => k.t === frame) ?? false
+  }
+
   // --- File I/O ---
 
   async function saveToFile(path: string) {
@@ -261,6 +345,7 @@ export const useSceneStore = defineStore('scene', () => {
     play, pause, togglePlayback,
     undo, redo, canUndo, canRedo,
     addLayer, removeLayer, reorderLayer, selectLayer, setFrame, updateLayerProperty,
+    addKeyframe, removeKeyframe, getKeyframes, hasKeyframeAtFrame,
     saveToFile, loadFromFile,
   }
 })

@@ -6,6 +6,8 @@ import { useSceneStore } from '../stores/scene'
 import EffectsPanel from './EffectsPanel.vue'
 // @ts-ignore TS6133 — vue-tsc does not detect template usage
 import MaskEditor from './MaskEditor.vue'
+// @ts-ignore TS6133 — vue-tsc does not detect template usage
+import KeyframeStrip from './KeyframeStrip.vue'
 
 const store = useSceneStore()
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -383,6 +385,7 @@ function updateTransform(prop: string, value: number, index?: number) {
             @input="updateTransform('position', Number(($event.target as HTMLInputElement).value), 1)"
             class="w-full accent-crimson h-1.5"
           />
+          <KeyframeStrip :layer-id="layer.id" path="transform.position" />
         </div>
 
         <!-- Scale X -->
@@ -429,6 +432,7 @@ function updateTransform(prop: string, value: number, index?: number) {
             @input="updateTransform('scale', Number(($event.target as HTMLInputElement).value), 1)"
             class="w-full accent-crimson h-1.5"
           />
+          <KeyframeStrip :layer-id="layer.id" path="transform.scale" />
         </div>
 
         <!-- Rotation -->
@@ -454,6 +458,7 @@ function updateTransform(prop: string, value: number, index?: number) {
             @input="updateTransform('rotation', Number(($event.target as HTMLInputElement).value))"
             class="w-full accent-crimson h-1.5"
           />
+          <KeyframeStrip :layer-id="layer.id" path="transform.rotation" />
         </div>
 
         <!-- Opacity -->
@@ -464,6 +469,16 @@ function updateTransform(prop: string, value: number, index?: number) {
               {{ Math.round((layer.transform.opacity ?? 1) * 100) }}%
             </span>
           </div>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            :value="layer.transform.opacity ?? 1"
+            @input="updateTransform('opacity', Number(($event.target as HTMLInputElement).value))"
+            class="w-full accent-crimson h-1.5"
+          />
+          <KeyframeStrip :layer-id="layer.id" path="transform.opacity" />
         </div>
       </div>
 
