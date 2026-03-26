@@ -63,7 +63,14 @@ pub fn compute_crop_rect(
     src_w: u32, src_h: u32,
     safe_zone: &SafeZone,
     dst_w: u32, dst_h: u32,
-) -> CropRect {
+) -> Result<CropRect> {
+    if dst_w == 0 || dst_h == 0 {
+        return Err(MmotError::Encoder("export profile dimensions must be > 0".into()));
+    }
+    if src_w == 0 || src_h == 0 {
+        return Err(MmotError::Encoder("source dimensions must be > 0".into()));
+    }
+
     let safe_cx = safe_zone.x + safe_zone.width / 2.0;
     let safe_cy = safe_zone.y + safe_zone.height / 2.0;
     let src_wf = src_w as f64;
@@ -110,7 +117,7 @@ pub fn compute_crop_rect(
     x = x.max(0.0).min((src_wf - crop_w).max(0.0));
     y = y.max(0.0).min((src_hf - crop_h).max(0.0));
 
-    CropRect { x, y, width: crop_w, height: crop_h }
+    Ok(CropRect { x, y, width: crop_w, height: crop_h })
 }
 
 /// Crop and scale an RGBA frame buffer using nearest-neighbour sampling.
@@ -182,14 +189,16 @@ pub fn export_all(
     let src_h = scene.meta.height;
 
     // Render all frames at original resolution
-    let frames: Vec<Vec<u8>> = (0..total_frames)
+    let frame_results: Vec<Result<Vec<u8>>> = (0..total_frames)
         .into_par_iter()
         .map(|frame_num| {
-            let fs = evaluate_scene(&scene, frame_num, &font_cache)
-                .expect("frame evaluation failed");
-            render_frame(&fs).expect("frame render failed")
+            let fs = evaluate_scene(&scene, frame_num, &font_cache)?;
+            render_frame(&fs)
         })
         .collect();
+
+    // Propagate any render errors
+    let frames: Vec<Vec<u8>> = frame_results.into_iter().collect::<Result<Vec<_>>>()?;
 
     // Create output directory
     std::fs::create_dir_all(&opts.output_dir).map_err(MmotError::Io)?;
@@ -197,7 +206,7 @@ pub fn export_all(
     let mut results = Vec::new();
 
     for profile in &opts.profiles {
-        let crop = compute_crop_rect(src_w, src_h, &safe_zone, profile.width, profile.height);
+        let crop = compute_crop_rect(src_w, src_h, &safe_zone, profile.width, profile.height)?;
 
         // Crop and scale all frames for this profile
         let profile_frames: Vec<Vec<u8>> = frames.iter()
@@ -270,7 +279,7 @@ mod tests {
     fn crop_rect_wider_target() {
         // 1920x1080 canvas, 800x800 safe zone centered, export to 16:9
         let sz = SafeZone { x: 560.0, y: 140.0, width: 800.0, height: 800.0 };
-        let crop = compute_crop_rect(1920, 1080, &sz, 1920, 1080);
+        let crop = compute_crop_rect(1920, 1080, &sz, 1920, 1080).unwrap();
         let aspect = crop.width / crop.height;
         assert!((aspect - 16.0 / 9.0).abs() < 0.05, "expected ~16:9, got {aspect}");
         // Safe zone must be fully inside crop
@@ -288,7 +297,7 @@ mod tests {
         // than the 800-wide safe zone. The crop should be the largest 9:16
         // rectangle that fits the canvas, centered on the safe zone center.
         let sz = SafeZone { x: 560.0, y: 140.0, width: 800.0, height: 800.0 };
-        let crop = compute_crop_rect(1920, 1080, &sz, 1080, 1920);
+        let crop = compute_crop_rect(1920, 1080, &sz, 1080, 1920).unwrap();
         let aspect = crop.width / crop.height;
         assert!((aspect - 9.0 / 16.0).abs() < 0.05, "expected ~9:16, got {aspect}");
         // Crop should use full canvas height
@@ -305,7 +314,7 @@ mod tests {
         // 1080x1920 canvas (portrait), 400x400 safe zone, export to 9:16
         // Canvas is tall enough; safe zone should be fully contained.
         let sz = SafeZone { x: 340.0, y: 760.0, width: 400.0, height: 400.0 };
-        let crop = compute_crop_rect(1080, 1920, &sz, 1080, 1920);
+        let crop = compute_crop_rect(1080, 1920, &sz, 1080, 1920).unwrap();
         let aspect = crop.width / crop.height;
         assert!((aspect - 9.0 / 16.0).abs() < 0.05, "expected ~9:16, got {aspect}");
         // Safe zone must be fully inside crop
@@ -319,7 +328,7 @@ mod tests {
     fn crop_rect_square_target() {
         // 1920x1080 canvas, 800x800 safe zone, export to 1:1 (Instagram)
         let sz = SafeZone { x: 560.0, y: 140.0, width: 800.0, height: 800.0 };
-        let crop = compute_crop_rect(1920, 1080, &sz, 1080, 1080);
+        let crop = compute_crop_rect(1920, 1080, &sz, 1080, 1080).unwrap();
         let aspect = crop.width / crop.height;
         assert!((aspect - 1.0).abs() < 0.05, "expected ~1:1, got {aspect}");
         // For square target with square safe zone, crop should match safe zone dimensions
@@ -331,7 +340,7 @@ mod tests {
     fn crop_rect_clamped_to_canvas() {
         // Small canvas, large safe zone relative to canvas
         let sz = SafeZone { x: 10.0, y: 10.0, width: 80.0, height: 80.0 };
-        let crop = compute_crop_rect(100, 100, &sz, 1920, 1080);
+        let crop = compute_crop_rect(100, 100, &sz, 1920, 1080).unwrap();
         // Crop must not exceed canvas bounds
         assert!(crop.x >= 0.0, "crop x must be >= 0");
         assert!(crop.y >= 0.0, "crop y must be >= 0");
