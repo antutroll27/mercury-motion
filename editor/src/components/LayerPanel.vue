@@ -163,8 +163,9 @@ function handlePanelDrop(event: DragEvent) {
 
         <!-- Delete -->
         <button
-          class="opacity-0 group-hover:opacity-100 text-text-muted hover:text-crimson text-xs"
+          class="text-text-muted hover:text-crimson text-sm w-5 h-5 flex items-center justify-center rounded hover:bg-crimson/10 transition-colors"
           @click.stop="store.removeLayer(layer.id)"
+          title="Delete layer"
         >
           ×
         </button>

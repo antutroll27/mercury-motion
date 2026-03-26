@@ -59,10 +59,26 @@ async function handleExport() {
 
     <div class="flex-1" />
 
-    <!-- Scene Info -->
+    <!-- Resolution -->
     <div class="font-mono text-xs text-text-muted uppercase tracking-widest">
-      {{ store.scene.meta.width }}&times;{{ store.scene.meta.height }} &middot; {{ store.scene.meta.fps }}fps
+      {{ store.scene.meta.width }}&times;{{ store.scene.meta.height }}
     </div>
+
+    <!-- FPS Selector -->
+    <select
+      :value="store.scene.meta.fps"
+      @change="store.scene.meta.fps = Number(($event.target as HTMLSelectElement).value); store.schedulePreview()"
+      class="bg-cosmos-deep border border-cosmos-border rounded px-2 py-1 font-mono text-xs text-text-primary focus:border-crimson outline-none cursor-pointer"
+    >
+      <option :value="23.976">23.976</option>
+      <option :value="24">24</option>
+      <option :value="25">25</option>
+      <option :value="30">30</option>
+      <option :value="60">60</option>
+      <option :value="90">90</option>
+      <option :value="120">120</option>
+    </select>
+    <span class="font-mono text-xs text-text-muted uppercase">fps</span>
 
     <!-- Export Button -->
     <button
