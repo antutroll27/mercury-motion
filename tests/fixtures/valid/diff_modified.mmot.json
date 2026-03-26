@@ -1,0 +1,64 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "Diff Base",
+    "width": 1920,
+    "height": 1080,
+    "fps": 60,
+    "duration": 60,
+    "root": "main",
+    "background": "#0a0a1a"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "bg",
+          "type": "solid",
+          "in": 0,
+          "out": 60,
+          "color": "#2a2a3e",
+          "fill": "parent",
+          "transform": {
+            "position": [960, 540]
+          }
+        },
+        {
+          "id": "title",
+          "type": "text",
+          "in": 0,
+          "out": 60,
+          "text": "World",
+          "font": {
+            "family": "Inter",
+            "size": 48,
+            "weight": 700,
+            "color": "#f5f0e8"
+          },
+          "transform": {
+            "position": [960, 540],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 30, "v": 1.0 }
+            ]
+          }
+        },
+        {
+          "id": "sparkle",
+          "type": "solid",
+          "in": 15,
+          "out": 45,
+          "color": "#ffffff",
+          "transform": {
+            "position": [480, 270],
+            "scale": [0.5, 0.5],
+            "opacity": 0.8
+          }
+        }
+      ]
+    }
+  },
+  "assets": {
+    "fonts": []
+  }
+}
