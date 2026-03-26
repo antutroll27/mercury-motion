@@ -1,0 +1,21 @@
+{
+  "name": "@mmot/player",
+  "version": "0.1.0",
+  "description": "Embeddable web player for Mercury-Motion animations",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/antutroll27/mercury-motion" },
+  "keywords": ["video", "player", "animation", "motion-graphics", "canvas", "remotion"],
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
