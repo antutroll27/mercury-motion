@@ -16,6 +16,6 @@ pub use effects::{
     BlendMode, Effect, Mask, MaskMode, MaskPath, PathAnimation, TimeRemap, TrackMatte,
     TrackMatteMode, TrimPaths,
 };
-pub use scene::{Assets, Meta, PropDef, PropType, Scene};
+pub use scene::{Assets, Meta, PropDef, PropType, SafeZone, Scene};
 pub use transform::Transform;
 pub use transition::{TransitionSpec, WipeDirection};

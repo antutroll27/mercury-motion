@@ -163,3 +163,35 @@ fn repl_validate_scene() {
         "expected stderr to contain 'Valid', got:\n{stderr}",
     );
 }
+
+#[test]
+fn frame_command_writes_png() {
+    let dir = tempfile::TempDir::new().expect("failed to create temp dir");
+    let output_path = dir.path().join("preview.png");
+
+    let output = mmot_bin()
+        .args([
+            "frame",
+            &fixture("valid/minimal.mmot.json"),
+            "--frame",
+            "0",
+            "--output",
+            output_path.to_str().expect("utf-8 output path"),
+        ])
+        .output()
+        .expect("failed to run mmot");
+
+    assert!(
+        output.status.success(),
+        "expected exit 0, got {:?}\nstderr: {}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stderr),
+    );
+
+    let bytes = std::fs::read(&output_path).expect("output PNG should exist");
+    assert!(
+        bytes.starts_with(b"\x89PNG\r\n\x1a\n"),
+        "expected PNG signature, got first bytes: {:?}",
+        &bytes[..bytes.len().min(8)],
+    );
+}

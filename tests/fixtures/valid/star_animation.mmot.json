@@ -1,0 +1,61 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "Star Animation",
+    "width": 400,
+    "height": 400,
+    "fps": 15,
+    "duration": 22,
+    "root": "main",
+    "background": "#0a0a1a"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "star",
+          "type": "shape",
+          "in": 0,
+          "out": 22,
+          "shape": {
+            "shape_type": "polygon",
+            "points": [
+              [0, -80], [19, -25], [76, -25], [31, 10],
+              [47, 65], [0, 32], [-47, 65], [-31, 10],
+              [-76, -25], [-19, -25]
+            ],
+            "fill": "#f5c33d",
+            "stroke": { "color": "#fff8dc", "width": 1.5 }
+          },
+          "effects": [
+            { "type": "drop_shadow", "color": "#f5c33d", "offset_x": 0.0, "offset_y": 0.0, "blur": 12.0, "opacity": 0.7 }
+          ],
+          "transform": {
+            "position": [
+              { "t": 0, "v": [80, 200], "easing": "ease_in_out" },
+              { "t": 22, "v": [380, 200] }
+            ],
+            "rotation": [
+              { "t": 0, "v": 0 },
+              { "t": 22, "v": 360 }
+            ],
+            "scale": [
+              { "t": 0, "v": [0.0, 0.0], "easing": "ease_out" },
+              { "t": 4, "v": [1.0, 1.0], "easing": "ease_in_out" },
+              { "t": 11, "v": [1.2, 1.2], "easing": "ease_in_out" },
+              { "t": 18, "v": [0.8, 0.8], "easing": "ease_in" },
+              { "t": 22, "v": [0.0, 0.0] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 3, "v": 1.0 },
+              { "t": 18, "v": 1.0, "easing": "ease_in" },
+              { "t": 22, "v": 0.0 }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "assets": { "fonts": [] }
+}

@@ -1,0 +1,155 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "NeonText",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "duration": 60,
+    "background": "#050510",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "bg",
+          "type": "solid",
+          "in": 0,
+          "out": 60,
+          "color": "#050510",
+          "fill": "parent",
+          "transform": { "position": [960, 540] }
+        },
+        {
+          "id": "scanline_1",
+          "type": "shape",
+          "in": 0,
+          "out": 60,
+          "shape": { "shape_type": "rect", "width": 1920, "height": 1, "fill": "#1a1a2e" },
+          "transform": { "position": [960, 270], "opacity": 0.2 }
+        },
+        {
+          "id": "scanline_2",
+          "type": "shape",
+          "in": 0,
+          "out": 60,
+          "shape": { "shape_type": "rect", "width": 1920, "height": 1, "fill": "#1a1a2e" },
+          "transform": { "position": [960, 410], "opacity": 0.2 }
+        },
+        {
+          "id": "scanline_3",
+          "type": "shape",
+          "in": 0,
+          "out": 60,
+          "shape": { "shape_type": "rect", "width": 1920, "height": 1, "fill": "#1a1a2e" },
+          "transform": { "position": [960, 550], "opacity": 0.2 }
+        },
+        {
+          "id": "scanline_4",
+          "type": "shape",
+          "in": 0,
+          "out": 60,
+          "shape": { "shape_type": "rect", "width": 1920, "height": 1, "fill": "#1a1a2e" },
+          "transform": { "position": [960, 690], "opacity": 0.2 }
+        },
+        {
+          "id": "scanline_5",
+          "type": "shape",
+          "in": 0,
+          "out": 60,
+          "shape": { "shape_type": "rect", "width": 1920, "height": 1, "fill": "#1a1a2e" },
+          "transform": { "position": [960, 830], "opacity": 0.2 }
+        },
+        {
+          "id": "text_cyan",
+          "type": "text",
+          "in": 0,
+          "out": 60,
+          "text": "YOUR TEXT",
+          "font": { "family": "Arial", "size": 110.0, "weight": 900, "color": "#00e5ff" },
+          "transform": {
+            "position": [962, 542],
+            "opacity": [
+              { "t": 0, "v": 0.0 },
+              { "t": 5, "v": 0.0 },
+              { "t": 6, "v": 0.5 },
+              { "t": 8, "v": 0.5 },
+              { "t": 9, "v": 0.8 },
+              { "t": 10, "v": 0.3 },
+              { "t": 11, "v": 0.5 },
+              { "t": 20, "v": 0.5 },
+              { "t": 21, "v": 0.2 },
+              { "t": 22, "v": 0.7 },
+              { "t": 23, "v": 0.5 },
+              { "t": 38, "v": 0.5 },
+              { "t": 39, "v": 0.8 },
+              { "t": 40, "v": 0.3 },
+              { "t": 41, "v": 0.5 },
+              { "t": 50, "v": 0.5 },
+              { "t": 51, "v": 0.2 },
+              { "t": 52, "v": 0.7 },
+              { "t": 53, "v": 0.5 },
+              { "t": 60, "v": 0.5 }
+            ]
+          },
+          "blend_mode": "add"
+        },
+        {
+          "id": "text_magenta",
+          "type": "text",
+          "in": 0,
+          "out": 60,
+          "text": "YOUR TEXT",
+          "font": { "family": "Arial", "size": 110.0, "weight": 900, "color": "#ff0080" },
+          "transform": {
+            "position": [958, 538],
+            "opacity": [
+              { "t": 0, "v": 0.0 },
+              { "t": 5, "v": 0.0 },
+              { "t": 6, "v": 0.5 },
+              { "t": 8, "v": 0.5 },
+              { "t": 9, "v": 0.3 },
+              { "t": 10, "v": 0.8 },
+              { "t": 11, "v": 0.5 },
+              { "t": 20, "v": 0.5 },
+              { "t": 21, "v": 0.7 },
+              { "t": 22, "v": 0.2 },
+              { "t": 23, "v": 0.5 },
+              { "t": 38, "v": 0.5 },
+              { "t": 39, "v": 0.3 },
+              { "t": 40, "v": 0.8 },
+              { "t": 41, "v": 0.5 },
+              { "t": 50, "v": 0.5 },
+              { "t": 51, "v": 0.7 },
+              { "t": 52, "v": 0.2 },
+              { "t": 53, "v": 0.5 },
+              { "t": 60, "v": 0.5 }
+            ]
+          },
+          "blend_mode": "add"
+        },
+        {
+          "id": "text_main",
+          "type": "text",
+          "in": 0,
+          "out": 60,
+          "text": "YOUR TEXT",
+          "font": { "family": "Arial", "size": 110.0, "weight": 900, "color": "#ffffff" },
+          "transform": {
+            "position": [960, 540],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 5, "v": 0.0 },
+              { "t": 8, "v": 1.0 }
+            ]
+          },
+          "effects": [
+            { "type": "glow", "color": "#00e5ff", "radius": 25.0, "intensity": 0.6 },
+            { "type": "drop_shadow", "color": "#000000", "offset_x": 0.0, "offset_y": 4.0, "blur": 15.0, "opacity": 0.8 }
+          ]
+        }
+      ]
+    }
+  }
+}

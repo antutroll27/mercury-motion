@@ -2544,7 +2544,6 @@ version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
  "image",
- "log",
  "mmot-core",
  "schemars 0.8.22",
  "serde",
@@ -2597,6 +2596,7 @@ dependencies = [
  "clap",
  "console",
  "dirs-next",
+ "image",
  "indicatif",
  "mmot-core",
  "rustyline",

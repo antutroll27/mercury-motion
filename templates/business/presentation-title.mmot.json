@@ -1,0 +1,118 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "PresentationTitle",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "duration": 90,
+    "background": "#0a0a1a",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "bg_gradient",
+          "type": "gradient",
+          "in": 0,
+          "out": 90,
+          "gradient": {
+            "gradient_type": "linear",
+            "start": [0.0, 0.0],
+            "end": [1.0, 1.0],
+            "colors": [
+              { "offset": 0.0, "color": "#0d1b2a" },
+              { "offset": 0.5, "color": "#0a1628" },
+              { "offset": 1.0, "color": "#08101e" }
+            ]
+          },
+          "fill": "parent",
+          "transform": { "position": [960, 540] }
+        },
+        {
+          "id": "accent_line",
+          "type": "shape",
+          "in": 0,
+          "out": 90,
+          "shape": {
+            "shape_type": "rect",
+            "width": 4,
+            "height": 1080,
+            "fill": "#c1121f"
+          },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [-10, 540], "easing": { "type": "cubic_bezier", "x1": 0.16, "y1": 1.0, "x2": 0.3, "y2": 1.0 } },
+              { "t": 15, "v": [100, 540] }
+            ],
+            "opacity": 0.8
+          }
+        },
+        {
+          "id": "company_name",
+          "type": "text",
+          "in": 5,
+          "out": 90,
+          "text": "COMPANY NAME",
+          "font": {
+            "family": "Arial",
+            "size": 64.0,
+            "weight": 700,
+            "color": "#f5f0e8"
+          },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [-300, 420], "easing": "ease_out" },
+              { "t": 20, "v": [580, 420] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 15, "v": 1.0 }
+            ]
+          }
+        },
+        {
+          "id": "presentation_title",
+          "type": "text",
+          "in": 18,
+          "out": 90,
+          "text": "Presentation Title Goes Here",
+          "font": {
+            "family": "Arial",
+            "size": 36.0,
+            "weight": 400,
+            "color": "#a0a0b0"
+          },
+          "transform": {
+            "position": [530, 500],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 20, "v": 1.0 }
+            ]
+          }
+        },
+        {
+          "id": "date_presenter",
+          "type": "text",
+          "in": 35,
+          "out": 90,
+          "text": "March 2026 — Your Name",
+          "font": {
+            "family": "Arial",
+            "size": 22.0,
+            "weight": 300,
+            "color": "#606070"
+          },
+          "transform": {
+            "position": [490, 570],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 20, "v": 1.0 }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

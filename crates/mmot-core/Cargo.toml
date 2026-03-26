@@ -11,11 +11,13 @@ categories = ["multimedia::video", "rendering", "graphics"]
 readme = "../../README.md"
 
 [features]
-default = []
+default = ["native-renderer"]
+native-renderer = ["dep:skia-safe", "dep:rav1e", "dep:muxide", "dep:gif", "dep:symphonia"]
 audio-codec = ["opus"]
 ffmpeg = ["dep:ffmpeg-next", "dep:ffmpeg-sys-next"]
 
 [dependencies]
+# Always available (pure Rust, WASM-compatible)
 serde = { workspace = true }
 serde_json = { workspace = true }
 schemars = { workspace = true }
@@ -23,13 +25,15 @@ thiserror = { workspace = true }
 rayon = { workspace = true }
 image = { workspace = true }
 tracing = { workspace = true }
-skia-safe = { version = "0.82", features = ["textlayout"] }
-rav1e = { version = "0.7", default-features = false, features = ["threading", "asm"] }
 serde_path_to_error = "0.1"
-muxide = "0.2"
-symphonia = { version = "0.5", features = ["mp3", "wav", "flac", "aac", "ogg", "vorbis", "pcm", "adpcm"] }
 regex = "1"
-gif = "0.13"
+
+# Native renderer dependencies (optional, not WASM-compatible)
+skia-safe = { version = "0.82", features = ["textlayout"], optional = true }
+rav1e = { version = "0.7", default-features = false, features = ["threading", "asm"], optional = true }
+muxide = { version = "0.2", optional = true }
+symphonia = { version = "0.5", features = ["mp3", "wav", "flac", "aac", "ogg", "vorbis", "pcm", "adpcm"], optional = true }
+gif = { version = "0.13", optional = true }
 opus = { version = "0.3", optional = true }
 ffmpeg-next = { version = "8", optional = true }
 ffmpeg-sys-next = { version = "8", optional = true, default-features = false }

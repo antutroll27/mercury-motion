@@ -5,7 +5,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { writeFileSync, mkdtempSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -157,6 +157,43 @@ const TOOLS = [
 
 // ── Tool Handlers ───────────────────────────────────────────────────────────
 
+function mmotExecutable() {
+  return process.env.MMOT_BIN || "mmot";
+}
+
+function runMmot(args, timeout) {
+  const executable = mmotExecutable();
+
+  try {
+    const stdout = execFileSync(executable, args, {
+      encoding: "utf-8",
+      timeout,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    return { ok: true, executable, stdout };
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return {
+        ok: false,
+        executable,
+        stdout: "",
+        stderr:
+          `Unable to find "${executable}" on PATH.\n` +
+          "Install the mmot CLI or set MMOT_BIN to its full path.",
+        status: null,
+      };
+    }
+
+    return {
+      ok: false,
+      executable,
+      stdout: error.stdout ?? "",
+      stderr: error.stderr ?? error.message ?? String(error),
+      status: error.status ?? null,
+    };
+  }
+}
+
 function handleCreateScene(args) {
   const width = args.width ?? 1920;
   const height = args.height ?? 1080;
@@ -276,68 +313,82 @@ function handleRender(args) {
   const outputPath =
     args.output_path ?? scenePath.replace(/\.mmot\.json$/, `.${format}`);
 
-  const cmd = `mmot render "${scenePath}" --output "${outputPath}" --format ${format} --quality ${quality}`;
+  const result = runMmot(
+    [
+      "render",
+      scenePath,
+      "--output",
+      outputPath,
+      "--format",
+      format,
+      "--quality",
+      String(quality),
+    ],
+    300000
+  );
 
-  try {
-    const result = execSync(cmd, {
-      encoding: "utf-8",
-      timeout: 300000,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+  if (result.ok) {
     return {
       content: [
         {
           type: "text",
-          text: `Rendered successfully.\n\nOutput: ${outputPath}\nFormat: ${format.toUpperCase()}\nQuality: ${quality}\n\nCommand: ${cmd}\n\n${result}`,
+          text:
+            `Rendered successfully.\n\n` +
+            `Output: ${outputPath}\n` +
+            `Format: ${format.toUpperCase()}\n` +
+            `Quality: ${quality}\n\n` +
+            `${result.stdout}`,
         },
       ],
-    };
-  } catch (error) {
-    const stderr = error.stderr ?? "";
-    const stdout = error.stdout ?? "";
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Render failed.\n\nCommand: ${cmd}\n\nExit code: ${error.status}\n\nstderr:\n${stderr}\n\nstdout:\n${stdout}`,
-        },
-      ],
-      isError: true,
     };
   }
+
+  return {
+    content: [
+      {
+        type: "text",
+        text:
+          `Render failed.\n\n` +
+          `Executable: ${result.executable}\n` +
+          `Exit code: ${result.status ?? "not started"}\n\n` +
+          `stderr:\n${result.stderr}\n\n` +
+          `stdout:\n${result.stdout}`,
+      },
+    ],
+    isError: true,
+  };
 }
 
 function handleValidate(args) {
   const scenePath = args.scene_path;
-  const cmd = `mmot validate "${scenePath}"`;
+  const result = runMmot(["validate", scenePath], 30000);
 
-  try {
-    const result = execSync(cmd, {
-      encoding: "utf-8",
-      timeout: 30000,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+  if (result.ok) {
     return {
       content: [
         {
           type: "text",
-          text: `Validation passed.\n\nFile: ${scenePath}\n\n${result}`,
+          text: `Validation passed.\n\nFile: ${scenePath}\n\n${result.stdout}`,
         },
       ],
-    };
-  } catch (error) {
-    const stderr = error.stderr ?? "";
-    const stdout = error.stdout ?? "";
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Validation failed.\n\nFile: ${scenePath}\n\nExit code: ${error.status}\n\nstderr:\n${stderr}\n\nstdout:\n${stdout}`,
-        },
-      ],
-      isError: true,
     };
   }
+
+  return {
+    content: [
+      {
+        type: "text",
+        text:
+          `Validation failed.\n\n` +
+          `File: ${scenePath}\n` +
+          `Executable: ${result.executable}\n` +
+          `Exit code: ${result.status ?? "not started"}\n\n` +
+          `stderr:\n${result.stderr}\n\n` +
+          `stdout:\n${result.stdout}`,
+      },
+    ],
+    isError: true,
+  };
 }
 
 function handlePreviewFrame(args) {
@@ -364,38 +415,41 @@ function handlePreviewFrame(args) {
     };
   }
 
-  // Render as GIF with 1-frame duration to get a single frame output,
-  // or use the render command with frame range if supported.
-  // The mmot CLI does not have a single-frame PNG export yet,
-  // so we render a 1-frame GIF and note the limitation.
-  const cmd = `mmot render "${scenePath}" --output "${outputPath}" --format mp4 --quality 90`;
+  const result = runMmot(
+    ["frame", scenePath, "--frame", String(frame), "--output", outputPath],
+    120000
+  );
 
-  try {
-    execSync(cmd, {
-      encoding: "utf-8",
-      timeout: 120000,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+  if (result.ok) {
     return {
       content: [
         {
           type: "text",
-          text: `Frame preview rendered.\n\nOutput: ${outputPath}\nFrame: ${frame}\nTemp scene: ${scenePath}\n\nNote: The mmot CLI renders the full scene. The output file contains all frames. Single-frame PNG export is planned for a future release.`,
+          text:
+            `Frame preview rendered.\n\n` +
+            `Output: ${outputPath}\n` +
+            `Frame: ${frame}\n` +
+            `Temp scene: ${scenePath}\n\n` +
+            `${result.stdout}`,
         },
       ],
-    };
-  } catch (error) {
-    const stderr = error.stderr ?? "";
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Preview render failed.\n\nstderr:\n${stderr}\n\nError: ${error.message}`,
-        },
-      ],
-      isError: true,
     };
   }
+
+  return {
+    content: [
+      {
+        type: "text",
+        text:
+          `Preview render failed.\n\n` +
+          `Executable: ${result.executable}\n` +
+          `Exit code: ${result.status ?? "not started"}\n\n` +
+          `stderr:\n${result.stderr}\n\n` +
+          `stdout:\n${result.stdout}`,
+      },
+    ],
+    isError: true,
+  };
 }
 
 function handleGetSchema() {

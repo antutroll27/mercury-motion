@@ -8,6 +8,7 @@ use crate::schema::{AnimatableValue, Keyframe, Layer, LayerContent, PropType, Sc
 pub fn validate(scene: &Scene) -> Result<()> {
     validate_version(&scene.version)?;
     validate_meta(scene)?;
+    validate_safe_zone(scene)?;
 
     for (comp_name, comp) in &scene.compositions {
         validate_unique_layer_ids(comp_name, &comp.layers)?;
@@ -60,6 +61,55 @@ fn validate_meta(scene: &Scene) -> Result<()> {
             ),
             pointer: "/meta/root".into(),
         });
+    }
+    Ok(())
+}
+
+/// safe_zone must be within canvas bounds and have positive dimensions.
+fn validate_safe_zone(scene: &Scene) -> Result<()> {
+    if let Some(ref sz) = scene.meta.safe_zone {
+        if sz.x < 0.0 {
+            return Err(MmotError::Parse {
+                message: "safe_zone x must be >= 0".into(),
+                pointer: "/meta/safe_zone/x".into(),
+            });
+        }
+        if sz.y < 0.0 {
+            return Err(MmotError::Parse {
+                message: "safe_zone y must be >= 0".into(),
+                pointer: "/meta/safe_zone/y".into(),
+            });
+        }
+        if sz.width <= 0.0 {
+            return Err(MmotError::Parse {
+                message: "safe_zone width must be > 0".into(),
+                pointer: "/meta/safe_zone/width".into(),
+            });
+        }
+        if sz.height <= 0.0 {
+            return Err(MmotError::Parse {
+                message: "safe_zone height must be > 0".into(),
+                pointer: "/meta/safe_zone/height".into(),
+            });
+        }
+        if sz.x + sz.width > scene.meta.width as f64 {
+            return Err(MmotError::Parse {
+                message: format!(
+                    "safe_zone exceeds canvas width: x({}) + width({}) > {}",
+                    sz.x, sz.width, scene.meta.width
+                ),
+                pointer: "/meta/safe_zone".into(),
+            });
+        }
+        if sz.y + sz.height > scene.meta.height as f64 {
+            return Err(MmotError::Parse {
+                message: format!(
+                    "safe_zone exceeds canvas height: y({}) + height({}) > {}",
+                    sz.y, sz.height, scene.meta.height
+                ),
+                pointer: "/meta/safe_zone".into(),
+            });
+        }
     }
     Ok(())
 }
@@ -302,5 +352,52 @@ mod tests {
             "compositions": {"main": {"layers": []}}
         }"##;
         assert!(parse(json).is_ok());
+    }
+
+    #[test]
+    fn accepts_valid_safe_zone() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": {"name":"T","width":1920,"height":1080,"fps":30,"duration":30,"background":"#000000","root":"main",
+                     "safe_zone":{"x":560,"y":140,"width":800,"height":800}},
+            "compositions": {"main": {"layers": []}}
+        }"##;
+        assert!(parse(json).is_ok());
+    }
+
+    #[test]
+    fn rejects_safe_zone_exceeds_canvas() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": {"name":"T","width":640,"height":360,"fps":30,"duration":30,"background":"#000000","root":"main",
+                     "safe_zone":{"x":0,"y":0,"width":800,"height":400}},
+            "compositions": {"main": {"layers": []}}
+        }"##;
+        let err = parse(json).unwrap_err();
+        assert!(err.to_string().contains("safe_zone exceeds canvas width"));
+    }
+
+    #[test]
+    fn rejects_safe_zone_negative_x() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": {"name":"T","width":640,"height":360,"fps":30,"duration":30,"background":"#000000","root":"main",
+                     "safe_zone":{"x":-10,"y":0,"width":100,"height":100}},
+            "compositions": {"main": {"layers": []}}
+        }"##;
+        let err = parse(json).unwrap_err();
+        assert!(err.to_string().contains("safe_zone x must be >= 0"));
+    }
+
+    #[test]
+    fn rejects_safe_zone_zero_width() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": {"name":"T","width":640,"height":360,"fps":30,"duration":30,"background":"#000000","root":"main",
+                     "safe_zone":{"x":0,"y":0,"width":0,"height":100}},
+            "compositions": {"main": {"layers": []}}
+        }"##;
+        let err = parse(json).unwrap_err();
+        assert!(err.to_string().contains("safe_zone width must be > 0"));
     }
 }

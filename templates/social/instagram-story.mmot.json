@@ -1,0 +1,111 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "InstagramStory",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "duration": 120,
+    "background": "#0a0a1a",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "bg_gradient",
+          "type": "gradient",
+          "in": 0,
+          "out": 120,
+          "gradient": {
+            "gradient_type": "linear",
+            "start": [0.5, 0.0],
+            "end": [0.5, 1.0],
+            "colors": [
+              { "offset": 0.0, "color": "#1a0a3e" },
+              { "offset": 0.5, "color": "#0f0a28" },
+              { "offset": 1.0, "color": "#0a0a1a" }
+            ]
+          },
+          "fill": "parent",
+          "transform": { "position": [540, 960] }
+        },
+        {
+          "id": "swipe_text",
+          "type": "text",
+          "in": 0,
+          "out": 120,
+          "text": "SWIPE UP",
+          "font": {
+            "family": "Arial",
+            "size": 72.0,
+            "weight": 700,
+            "color": "#f5f0e8"
+          },
+          "transform": {
+            "position": [540, 860],
+            "scale": [
+              { "t": 0, "v": [1.0, 1.0], "easing": "ease_in_out" },
+              { "t": 30, "v": [1.05, 1.05], "easing": "ease_in_out" },
+              { "t": 60, "v": [1.0, 1.0], "easing": "ease_in_out" },
+              { "t": 90, "v": [1.05, 1.05], "easing": "ease_in_out" },
+              { "t": 120, "v": [1.0, 1.0] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 15, "v": 1.0 }
+            ]
+          },
+          "effects": [
+            { "type": "drop_shadow", "color": "#000000", "offset_x": 0.0, "offset_y": 4.0, "blur": 15.0, "opacity": 0.6 }
+          ]
+        },
+        {
+          "id": "arrow_up",
+          "type": "shape",
+          "in": 10,
+          "out": 120,
+          "shape": {
+            "shape_type": "polygon",
+            "points": [[0, 10], [-15, -5], [15, -5]],
+            "fill": "#c1121f"
+          },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [540, 780], "easing": "ease_in_out" },
+              { "t": 30, "v": [540, 770], "easing": "ease_in_out" },
+              { "t": 60, "v": [540, 780], "easing": "ease_in_out" },
+              { "t": 90, "v": [540, 770], "easing": "ease_in_out" },
+              { "t": 120, "v": [540, 780] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 12, "v": 1.0 }
+            ],
+            "scale": [2.0, 2.0]
+          }
+        },
+        {
+          "id": "tap_text",
+          "type": "text",
+          "in": 25,
+          "out": 120,
+          "text": "tap to learn more",
+          "font": {
+            "family": "Arial",
+            "size": 20.0,
+            "weight": 300,
+            "color": "#808090"
+          },
+          "transform": {
+            "position": [540, 1750],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 20, "v": 0.7 }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

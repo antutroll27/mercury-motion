@@ -1,0 +1,85 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "LoadingDots",
+    "width": 200,
+    "height": 60,
+    "fps": 15,
+    "duration": 15,
+    "background": "#0a0a14",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "dot_1",
+          "type": "shape",
+          "in": 0,
+          "out": 15,
+          "shape": { "shape_type": "ellipse", "width": 16, "height": 16, "fill": "#f5f0e8" },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [60, 30], "easing": "ease_in_out" },
+              { "t": 3, "v": [60, 20], "easing": "ease_in_out" },
+              { "t": 6, "v": [60, 30], "easing": "ease_in_out" },
+              { "t": 15, "v": [60, 30] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 1.0, "easing": "ease_in_out" },
+              { "t": 3, "v": 1.0, "easing": "ease_in_out" },
+              { "t": 6, "v": 0.4, "easing": "ease_in_out" },
+              { "t": 15, "v": 0.4 }
+            ]
+          }
+        },
+        {
+          "id": "dot_2",
+          "type": "shape",
+          "in": 0,
+          "out": 15,
+          "shape": { "shape_type": "ellipse", "width": 16, "height": 16, "fill": "#f5f0e8" },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [100, 30] },
+              { "t": 3, "v": [100, 30], "easing": "ease_in_out" },
+              { "t": 6, "v": [100, 20], "easing": "ease_in_out" },
+              { "t": 9, "v": [100, 30], "easing": "ease_in_out" },
+              { "t": 15, "v": [100, 30] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.4 },
+              { "t": 3, "v": 0.4, "easing": "ease_in_out" },
+              { "t": 6, "v": 1.0, "easing": "ease_in_out" },
+              { "t": 9, "v": 0.4, "easing": "ease_in_out" },
+              { "t": 15, "v": 0.4 }
+            ]
+          }
+        },
+        {
+          "id": "dot_3",
+          "type": "shape",
+          "in": 0,
+          "out": 15,
+          "shape": { "shape_type": "ellipse", "width": 16, "height": 16, "fill": "#f5f0e8" },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [140, 30] },
+              { "t": 6, "v": [140, 30], "easing": "ease_in_out" },
+              { "t": 9, "v": [140, 20], "easing": "ease_in_out" },
+              { "t": 12, "v": [140, 30], "easing": "ease_in_out" },
+              { "t": 15, "v": [140, 30] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.4 },
+              { "t": 6, "v": 0.4, "easing": "ease_in_out" },
+              { "t": 9, "v": 1.0, "easing": "ease_in_out" },
+              { "t": 12, "v": 0.4, "easing": "ease_in_out" },
+              { "t": 15, "v": 0.4 }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,20 +1,29 @@
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(feature = "native-renderer")]
+use std::path::PathBuf;
+#[cfg(feature = "native-renderer")]
 use std::sync::Arc;
 
+#[cfg(feature = "native-renderer")]
 use rayon::prelude::*;
 
 use crate::error::{MmotError, Result};
 use crate::evaluator::interpolate::{evaluate_f64, evaluate_vec2};
 use crate::parser::parse;
+#[cfg(feature = "native-renderer")]
 use crate::props;
-use crate::renderer::shape::ResolvedShape;
 use crate::renderer::{
-    FrameScene, ResolvedContent, ResolvedLayer, ResolvedTransform, render as render_frame,
+    FrameScene, ResolvedContent, ResolvedLayer, ResolvedShape, ResolvedTransform,
 };
+#[cfg(feature = "native-renderer")]
+use crate::renderer::render as render_frame;
+#[cfg(feature = "native-renderer")]
+use crate::schema::AnimatableValue;
 use crate::schema::{Layer, LayerContent, Scene, ShapeSpec, TransitionSpec, Vec2};
 
 /// Options for the render pipeline.
+#[cfg(feature = "native-renderer")]
 pub struct RenderOptions {
     pub output_path: PathBuf,
     pub format: OutputFormat,
@@ -26,6 +35,7 @@ pub struct RenderOptions {
 }
 
 /// Output format.
+#[cfg(feature = "native-renderer")]
 #[derive(Debug, Clone)]
 pub enum OutputFormat {
     Mp4,
@@ -34,6 +44,7 @@ pub enum OutputFormat {
 }
 
 /// Render backend.
+#[cfg(feature = "native-renderer")]
 #[derive(Debug, Clone)]
 pub enum RenderBackend {
     Cpu,
@@ -41,6 +52,7 @@ pub enum RenderBackend {
 }
 
 /// Progress callback: called with (current_frame, total_frames).
+#[cfg(feature = "native-renderer")]
 pub type ProgressFn = Arc<dyn Fn(u64, u64) + Send + Sync>;
 
 /// Scene metadata returned by `get_scene_info`.
@@ -78,11 +90,13 @@ pub fn get_scene_info(json: &str) -> Result<SceneInfo> {
 ///
 /// Returns `(width, height, rgba_bytes)`. Use this for live preview in a UI
 /// — it skips encoding entirely and just returns the pixel buffer.
+#[cfg(feature = "native-renderer")]
 pub fn render_single_frame(json: &str, frame_number: u64) -> Result<(u32, u32, Vec<u8>)> {
     render_single_frame_with_props(json, &HashMap::new(), frame_number)
 }
 
 /// Render a single frame with props substitution.
+#[cfg(feature = "native-renderer")]
 pub fn render_single_frame_with_props(
     json: &str,
     cli_props: &HashMap<String, String>,
@@ -114,11 +128,13 @@ pub fn render_single_frame_with_props(
 }
 
 /// Main entry point: parse JSON, render all frames, encode to MP4.
+#[cfg(feature = "native-renderer")]
 pub fn render_scene(json: &str, opts: RenderOptions, progress: Option<ProgressFn>) -> Result<()> {
     render_scene_with_props(json, &HashMap::new(), opts, progress)
 }
 
 /// Main entry point with props substitution.
+#[cfg(feature = "native-renderer")]
 pub fn render_scene_with_props(
     json: &str,
     cli_props: &HashMap<String, String>,
@@ -277,6 +293,7 @@ pub fn render_scene_with_props(
 }
 
 /// Check if any layer in the scene has motion blur enabled.
+#[cfg(feature = "native-renderer")]
 fn scene_has_motion_blur(scene: &Scene) -> bool {
     scene
         .compositions
@@ -285,6 +302,7 @@ fn scene_has_motion_blur(scene: &Scene) -> bool {
 }
 
 /// Average multiple RGBA frame buffers by computing the mean of each byte.
+#[cfg(feature = "native-renderer")]
 fn average_frames(frames: &[Vec<u8>]) -> Vec<u8> {
     if frames.is_empty() {
         return Vec::new();
@@ -293,46 +311,249 @@ fn average_frames(frames: &[Vec<u8>]) -> Vec<u8> {
     let n = frames.len() as u32;
     (0..len)
         .map(|i| {
-            let sum: u32 = frames.iter().map(|f| f.get(i).copied().unwrap_or(0) as u32).sum();
+            let sum: u32 = frames
+                .iter()
+                .map(|f| f.get(i).copied().unwrap_or(0) as u32)
+                .sum();
             (sum / n) as u8
         })
         .collect()
 }
 
-/// Collect audio from all audio layers in the root composition.
+#[cfg(feature = "native-renderer")]
+#[derive(Debug)]
+struct ScheduledAudioLayer {
+    samples: Vec<f32>,
+    sample_rate: u32,
+    channels: u32,
+    start_frame: u64,
+    end_frame: u64,
+    volume: AnimatableValue<f64>,
+}
+
+/// Collect audio from audio layers across the composition tree.
+#[cfg(feature = "native-renderer")]
 fn collect_audio(scene: &Scene) -> Result<Option<(Vec<f32>, u32, u32)>> {
+    let mut layers = Vec::new();
+    collect_audio_layers(scene, &scene.meta.root, 0, None, &mut layers)?;
+    if layers.is_empty() {
+        return Ok(None);
+    }
+
+    Ok(mix_audio_layers(
+        &layers,
+        scene.meta.duration,
+        scene.meta.fps,
+    ))
+}
+
+#[cfg(feature = "native-renderer")]
+fn collect_audio_layers(
+    scene: &Scene,
+    comp_id: &str,
+    depth: u32,
+    active_window: Option<(u64, u64)>,
+    scheduled: &mut Vec<ScheduledAudioLayer>,
+) -> Result<()> {
+    if depth > 32 {
+        return Err(MmotError::RenderFailed {
+            frame: 0,
+            reason: format!(
+                "composition nesting too deep (>32) while collecting audio at '{comp_id}'"
+            ),
+        });
+    }
+
     let comp = scene
         .compositions
-        .get(&scene.meta.root)
+        .get(comp_id)
         .ok_or_else(|| MmotError::Parse {
-            message: format!("root composition '{}' not found", scene.meta.root),
-            pointer: "/meta/root".into(),
+            message: format!("composition '{comp_id}' not found"),
+            pointer: format!("/compositions/{comp_id}"),
         })?;
 
-    let mut audio_layers = Vec::new();
-    for layer in &comp.layers {
-        if let LayerContent::Audio { src, .. } = &layer.content {
-            let path = std::path::Path::new(src);
-            match crate::assets::audio::decode_file(path) {
-                Ok(decoded) => audio_layers.push(decoded),
-                Err(e) => {
-                    tracing::warn!("skipping audio layer '{}': {e}", layer.id);
+    let timed_layers: Vec<(&Layer, u64, u64)> = if comp.sequence {
+        compute_sequence_timing(&comp.layers, comp.transition.as_ref())
+    } else {
+        comp.layers
+            .iter()
+            .map(|l| (l, l.in_point, l.out_point))
+            .collect()
+    };
+
+    for (layer, layer_in, layer_out) in timed_layers {
+        let start_frame = active_window
+            .map(|(window_start, _)| layer_in.max(window_start))
+            .unwrap_or(layer_in);
+        let end_frame = active_window
+            .map(|(_, window_end)| layer_out.min(window_end))
+            .unwrap_or(layer_out);
+
+        if start_frame >= end_frame {
+            continue;
+        }
+
+        match &layer.content {
+            LayerContent::Audio { src, volume } => {
+                let path = Path::new(src);
+                match crate::assets::audio::decode_file(path) {
+                    Ok(decoded) => scheduled.push(ScheduledAudioLayer {
+                        samples: decoded.samples,
+                        sample_rate: decoded.sample_rate,
+                        channels: decoded.channels,
+                        start_frame,
+                        end_frame,
+                        volume: volume.clone(),
+                    }),
+                    Err(e) => {
+                        tracing::warn!("skipping audio layer '{}': {e}", layer.id);
+                    }
                 }
+            }
+            LayerContent::Composition { id } => {
+                collect_audio_layers(
+                    scene,
+                    id,
+                    depth + 1,
+                    Some((start_frame, end_frame)),
+                    scheduled,
+                )?;
+            }
+            _ => {}
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(feature = "native-renderer")]
+fn mix_audio_layers(
+    layers: &[ScheduledAudioLayer],
+    duration_frames: u64,
+    fps: f64,
+) -> Option<(Vec<f32>, u32, u32)> {
+    if layers.is_empty() {
+        return None;
+    }
+
+    let target_sample_rate = layers
+        .iter()
+        .map(|layer| layer.sample_rate)
+        .max()
+        .unwrap_or(0);
+    let target_channels = layers.iter().map(|layer| layer.channels).max().unwrap_or(0);
+    if target_sample_rate == 0 || target_channels == 0 {
+        return None;
+    }
+
+    let total_output_frames = frame_to_sample_frame(duration_frames, target_sample_rate, fps);
+    if total_output_frames == 0 {
+        return None;
+    }
+    let mut mixed = vec![0.0f32; total_output_frames * target_channels as usize];
+
+    for layer in layers {
+        let start_output_frame = frame_to_sample_frame(layer.start_frame, target_sample_rate, fps);
+        let end_output_frame = frame_to_sample_frame(layer.end_frame, target_sample_rate, fps);
+        if start_output_frame >= end_output_frame {
+            continue;
+        }
+
+        let max_output_frame = end_output_frame.min(total_output_frames);
+        for output_frame in start_output_frame..max_output_frame {
+            let local_output_frame = output_frame - start_output_frame;
+            let source_frame_pos =
+                local_output_frame as f64 * layer.sample_rate as f64 / target_sample_rate as f64;
+            if source_frame_pos >= source_frame_count(layer) as f64 {
+                break;
+            }
+
+            let scene_frame = sample_to_scene_frame(output_frame, target_sample_rate, fps);
+            let gain = evaluate_f64(&layer.volume, scene_frame) as f32;
+            if gain.abs() <= f32::EPSILON {
+                continue;
+            }
+
+            let output_base = output_frame * target_channels as usize;
+            for channel in 0..target_channels as usize {
+                let sample =
+                    sample_layer_channel(layer, source_frame_pos, channel, target_channels);
+                mixed[output_base + channel] += sample * gain;
             }
         }
     }
 
-    if audio_layers.is_empty() {
-        return Ok(None);
+    for sample in &mut mixed {
+        *sample = sample.clamp(-1.0, 1.0);
     }
 
-    // Use the first audio layer (multi-track mixing is Phase 3)
-    let first = &audio_layers[0];
-    Ok(Some((
-        first.samples.clone(),
-        first.sample_rate,
-        first.channels,
-    )))
+    Some((mixed, target_sample_rate, target_channels))
+}
+
+#[cfg(feature = "native-renderer")]
+fn frame_to_sample_frame(frame: u64, sample_rate: u32, fps: f64) -> usize {
+    ((frame as f64 * sample_rate as f64) / fps).round() as usize
+}
+
+#[cfg(feature = "native-renderer")]
+fn sample_to_scene_frame(sample_frame: usize, sample_rate: u32, fps: f64) -> u64 {
+    ((sample_frame as f64 * fps) / sample_rate as f64).floor() as u64
+}
+
+#[cfg(feature = "native-renderer")]
+fn source_frame_count(layer: &ScheduledAudioLayer) -> usize {
+    layer.samples.len() / layer.channels as usize
+}
+
+#[cfg(feature = "native-renderer")]
+fn sample_layer_channel(
+    layer: &ScheduledAudioLayer,
+    source_frame_pos: f64,
+    target_channel: usize,
+    target_channels: u32,
+) -> f32 {
+    let frame_count = source_frame_count(layer);
+    if frame_count == 0 {
+        return 0.0;
+    }
+
+    let max_frame_index = frame_count.saturating_sub(1);
+    let source_frame_pos = source_frame_pos.clamp(0.0, max_frame_index as f64);
+    let left_frame = source_frame_pos.floor() as usize;
+    let right_frame = (left_frame + 1).min(max_frame_index);
+    let frac = (source_frame_pos - left_frame as f64) as f32;
+
+    let left_sample =
+        sample_layer_channel_at_frame(layer, left_frame, target_channel, target_channels);
+    let right_sample =
+        sample_layer_channel_at_frame(layer, right_frame, target_channel, target_channels);
+    left_sample + (right_sample - left_sample) * frac
+}
+
+#[cfg(feature = "native-renderer")]
+fn sample_layer_channel_at_frame(
+    layer: &ScheduledAudioLayer,
+    frame_index: usize,
+    target_channel: usize,
+    target_channels: u32,
+) -> f32 {
+    let source_channels = layer.channels as usize;
+    if source_channels == 0 {
+        return 0.0;
+    }
+
+    if source_channels == 1 {
+        return layer.samples[frame_index];
+    }
+
+    if target_channels == 1 {
+        let start = frame_index * source_channels;
+        let slice = &layer.samples[start..start + source_channels];
+        return slice.iter().copied().sum::<f32>() / source_channels as f32;
+    }
+
+    let channel_index = target_channel.min(source_channels.saturating_sub(1));
+    layer.samples[frame_index * source_channels + channel_index]
 }
 
 /// Evaluate position along a polyline path at normalised time t (0.0–1.0).
@@ -776,7 +997,7 @@ fn load_image_asset(src: &str) -> Result<(Vec<u8>, u32, u32)> {
     Ok((decoded.rgba, decoded.width, decoded.height))
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native-renderer"))]
 mod tests {
     use super::*;
 
@@ -902,6 +1123,89 @@ mod tests {
                 "expected ffmpeg-related error, got: {err}"
             );
         }
+    }
+
+    #[test]
+    fn mix_audio_layers_blends_overlapping_tracks() {
+        let layers = vec![
+            ScheduledAudioLayer {
+                samples: vec![0.25, 0.25, 0.25],
+                sample_rate: 1,
+                channels: 1,
+                start_frame: 0,
+                end_frame: 3,
+                volume: AnimatableValue::Static(1.0),
+            },
+            ScheduledAudioLayer {
+                samples: vec![0.5, 0.5, 0.5],
+                sample_rate: 1,
+                channels: 1,
+                start_frame: 1,
+                end_frame: 4,
+                volume: AnimatableValue::Static(1.0),
+            },
+        ];
+
+        let (mixed, sample_rate, channels) =
+            mix_audio_layers(&layers, 4, 1.0).expect("audio should mix");
+        assert_eq!(sample_rate, 1);
+        assert_eq!(channels, 1);
+        assert_eq!(mixed, vec![0.25, 0.75, 0.75, 0.5]);
+    }
+
+    #[test]
+    fn mix_audio_layers_respects_animated_volume() {
+        let layers = vec![ScheduledAudioLayer {
+            samples: vec![1.0, 1.0, 1.0, 1.0],
+            sample_rate: 1,
+            channels: 1,
+            start_frame: 0,
+            end_frame: 4,
+            volume: AnimatableValue::Animated(vec![
+                crate::schema::Keyframe {
+                    t: 0,
+                    v: 0.0,
+                    easing: crate::schema::EasingValue::linear(),
+                },
+                crate::schema::Keyframe {
+                    t: 3,
+                    v: 1.0,
+                    easing: crate::schema::EasingValue::linear(),
+                },
+            ]),
+        }];
+
+        let (mixed, _, _) = mix_audio_layers(&layers, 4, 1.0).expect("audio should mix");
+        assert!((mixed[0] - 0.0).abs() < 1e-6);
+        assert!((mixed[1] - (1.0 / 3.0)).abs() < 1e-6);
+        assert!((mixed[2] - (2.0 / 3.0)).abs() < 1e-6);
+        assert!((mixed[3] - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn mix_audio_layers_converts_mono_to_stereo() {
+        let layers = vec![
+            ScheduledAudioLayer {
+                samples: vec![0.25, 0.5],
+                sample_rate: 1,
+                channels: 1,
+                start_frame: 0,
+                end_frame: 2,
+                volume: AnimatableValue::Static(1.0),
+            },
+            ScheduledAudioLayer {
+                samples: vec![0.5, -0.5, 0.5, -0.5],
+                sample_rate: 1,
+                channels: 2,
+                start_frame: 0,
+                end_frame: 2,
+                volume: AnimatableValue::Static(1.0),
+            },
+        ];
+
+        let (mixed, _, channels) = mix_audio_layers(&layers, 2, 1.0).expect("audio should mix");
+        assert_eq!(channels, 2);
+        assert_eq!(mixed, vec![0.75, -0.25, 1.0, 0.0]);
     }
 
     #[test]

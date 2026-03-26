@@ -1,3 +1,4 @@
+#[cfg(feature = "native-renderer")]
 pub mod audio;
 pub mod font;
 pub mod image;

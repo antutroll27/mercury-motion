@@ -45,8 +45,8 @@ fn scan_scenes() {
 
     for entry in entries.iter().take(show_count) {
         let name = entry.file_name().to_string_lossy().to_string();
-        let display_name = if name.len() > 28 {
-            format!("{}...", &name[..25])
+        let display_name = if name.chars().count() > 28 {
+            format!("{}...", name.chars().take(25).collect::<String>())
         } else {
             name.clone()
         };
@@ -55,7 +55,7 @@ fn scan_scenes() {
             Ok(json) => match mmot_core::parser::parse(&json) {
                 Ok(scene) => {
                     let m = &scene.meta;
-                    let secs = m.duration as f64 / m.fps;
+                    let secs = if m.fps > 0.0 { m.duration as f64 / m.fps } else { 0.0 };
                     eprintln!(
                         "  {:<30} {:>8} {:>9.1}s {:>5}x{}",
                         ui::vanilla(&display_name),

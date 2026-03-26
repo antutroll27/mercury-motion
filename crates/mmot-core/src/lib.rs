@@ -1,7 +1,12 @@
+pub mod accessibility;
 pub mod assets;
+pub mod diff;
+#[cfg(feature = "native-renderer")]
 pub mod encoder;
 pub mod error;
 pub mod evaluator;
+#[cfg(feature = "native-renderer")]
+pub mod export;
 pub mod parser;
 pub mod pipeline;
 pub mod props;

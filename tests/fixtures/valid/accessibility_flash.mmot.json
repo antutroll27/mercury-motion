@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "AccessibilityFlashTest",
+    "width": 640,
+    "height": 360,
+    "fps": 30,
+    "duration": 60,
+    "background": "#000000",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "flasher",
+          "type": "solid",
+          "in": 0,
+          "out": 60,
+          "color": "#ff0000",
+          "transform": {
+            "position": [320.0, 180.0],
+            "scale": [1.0, 1.0],
+            "opacity": [
+              { "t": 0,  "v": 1.0 },
+              { "t": 3,  "v": 0.0 },
+              { "t": 6,  "v": 1.0 },
+              { "t": 9,  "v": 0.0 },
+              { "t": 12, "v": 1.0 },
+              { "t": 15, "v": 0.0 },
+              { "t": 18, "v": 1.0 },
+              { "t": 21, "v": 0.0 },
+              { "t": 24, "v": 1.0 },
+              { "t": 27, "v": 0.0 },
+              { "t": 30, "v": 1.0 }
+            ],
+            "rotation": 0.0
+          }
+        }
+      ]
+    }
+  }
+}
