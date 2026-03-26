@@ -1,0 +1,72 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "NotificationBadge",
+    "width": 80,
+    "height": 80,
+    "fps": 30,
+    "duration": 15,
+    "background": "#00000000",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "badge_shadow",
+          "type": "shape",
+          "in": 0,
+          "out": 15,
+          "shape": { "shape_type": "ellipse", "width": 60, "height": 60, "fill": "#cc0000" },
+          "transform": {
+            "position": [40, 42],
+            "scale": [
+              { "t": 0, "v": [0.0, 0.0], "easing": { "type": "spring", "stiffness": 260.0, "damping": 12.0, "mass": 1.0 } },
+              { "t": 12, "v": [1.0, 1.0] }
+            ],
+            "opacity": 0.3
+          },
+          "effects": [
+            { "type": "gaussian_blur", "radius": 6.0 }
+          ]
+        },
+        {
+          "id": "badge_circle",
+          "type": "shape",
+          "in": 0,
+          "out": 15,
+          "shape": { "shape_type": "ellipse", "width": 60, "height": 60, "fill": "#e53935" },
+          "transform": {
+            "position": [40, 40],
+            "scale": [
+              { "t": 0, "v": [0.0, 0.0], "easing": { "type": "spring", "stiffness": 260.0, "damping": 12.0, "mass": 1.0 } },
+              { "t": 12, "v": [1.0, 1.0] }
+            ]
+          },
+          "effects": [
+            { "type": "glow", "color": "#e53935", "radius": 10.0, "intensity": 0.4 }
+          ]
+        },
+        {
+          "id": "badge_number",
+          "type": "text",
+          "in": 3,
+          "out": 15,
+          "text": "1",
+          "font": { "family": "Arial", "size": 32.0, "weight": 700, "color": "#ffffff" },
+          "transform": {
+            "position": [40, 40],
+            "scale": [
+              { "t": 0, "v": [0.0, 0.0], "easing": { "type": "spring", "stiffness": 300.0, "damping": 14.0, "mass": 1.0 } },
+              { "t": 10, "v": [1.0, 1.0] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 4, "v": 1.0 }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

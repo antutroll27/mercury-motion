@@ -1,0 +1,234 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "LogoPlaceholder",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "duration": 75,
+    "background": "#050510",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "bg_gradient",
+          "type": "gradient",
+          "in": 0,
+          "out": 75,
+          "gradient": {
+            "gradient_type": "radial",
+            "center": [0.5, 0.5],
+            "radius": 1.0,
+            "colors": [
+              { "offset": 0.0, "color": "#1a0a2e" },
+              { "offset": 0.5, "color": "#0d0620" },
+              { "offset": 1.0, "color": "#050210" }
+            ]
+          },
+          "fill": "parent",
+          "transform": { "position": [960, 540] }
+        },
+        {
+          "id": "reveal_circle",
+          "type": "gradient",
+          "in": 0,
+          "out": 75,
+          "gradient": {
+            "gradient_type": "radial",
+            "center": [0.5, 0.5],
+            "radius": 0.8,
+            "colors": [
+              { "offset": 0.0, "color": "#2d1b69" },
+              { "offset": 0.4, "color": "#1a0a2e" },
+              { "offset": 1.0, "color": "#0a0515" }
+            ]
+          },
+          "fill": "parent",
+          "transform": {
+            "position": [960, 540],
+            "scale": [
+              { "t": 0, "v": [0.0, 0.0], "easing": { "type": "cubic_bezier", "x1": 0.16, "y1": 1.0, "x2": 0.3, "y2": 1.0 } },
+              { "t": 30, "v": [2.5, 2.5] }
+            ]
+          }
+        },
+        {
+          "id": "center_flash",
+          "type": "shape",
+          "in": 5,
+          "out": 25,
+          "shape": {
+            "shape_type": "ellipse",
+            "width": 200,
+            "height": 200,
+            "fill": "#ffffff"
+          },
+          "transform": {
+            "position": [960, 540],
+            "scale": [
+              { "t": 0, "v": [0.5, 0.5], "easing": "ease_out" },
+              { "t": 10, "v": [3.0, 3.0] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.8, "easing": "ease_out" },
+              { "t": 15, "v": 0.0 }
+            ]
+          },
+          "effects": [
+            { "type": "gaussian_blur", "radius": 40.0 }
+          ]
+        },
+        {
+          "id": "sparkle_1",
+          "type": "shape",
+          "in": 12,
+          "out": 50,
+          "shape": { "shape_type": "ellipse", "width": 6, "height": 6, "fill": "#ffd93d" },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [960, 540], "easing": "ease_out" },
+              { "t": 25, "v": [1250, 350] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 1.0, "easing": "ease_in" },
+              { "t": 25, "v": 0.0 }
+            ],
+            "scale": [
+              { "t": 0, "v": [1.0, 1.0], "easing": "ease_in" },
+              { "t": 25, "v": [0.2, 0.2] }
+            ]
+          },
+          "blend_mode": "add",
+          "effects": [
+            { "type": "glow", "color": "#ffd93d", "radius": 5.0, "intensity": 1.0 }
+          ]
+        },
+        {
+          "id": "sparkle_2",
+          "type": "shape",
+          "in": 14,
+          "out": 52,
+          "shape": { "shape_type": "ellipse", "width": 5, "height": 5, "fill": "#c084fc" },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [960, 540], "easing": "ease_out" },
+              { "t": 25, "v": [680, 310] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 1.0, "easing": "ease_in" },
+              { "t": 25, "v": 0.0 }
+            ],
+            "scale": [
+              { "t": 0, "v": [1.0, 1.0], "easing": "ease_in" },
+              { "t": 25, "v": [0.2, 0.2] }
+            ]
+          },
+          "blend_mode": "add",
+          "effects": [
+            { "type": "glow", "color": "#c084fc", "radius": 6.0, "intensity": 0.8 }
+          ]
+        },
+        {
+          "id": "sparkle_3",
+          "type": "shape",
+          "in": 13,
+          "out": 48,
+          "shape": { "shape_type": "ellipse", "width": 7, "height": 7, "fill": "#ff6b6b" },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [960, 540], "easing": "ease_out" },
+              { "t": 25, "v": [1300, 730] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 1.0, "easing": "ease_in" },
+              { "t": 25, "v": 0.0 }
+            ],
+            "scale": [
+              { "t": 0, "v": [1.0, 1.0], "easing": "ease_in" },
+              { "t": 25, "v": [0.2, 0.2] }
+            ]
+          },
+          "blend_mode": "add",
+          "effects": [
+            { "type": "glow", "color": "#ff6b6b", "radius": 5.0, "intensity": 0.9 }
+          ]
+        },
+        {
+          "id": "sparkle_4",
+          "type": "shape",
+          "in": 15,
+          "out": 50,
+          "shape": { "shape_type": "ellipse", "width": 5, "height": 5, "fill": "#ffd93d" },
+          "transform": {
+            "position": [
+              { "t": 0, "v": [960, 540], "easing": "ease_out" },
+              { "t": 25, "v": [620, 740] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 1.0, "easing": "ease_in" },
+              { "t": 25, "v": 0.0 }
+            ],
+            "scale": [
+              { "t": 0, "v": [1.0, 1.0], "easing": "ease_in" },
+              { "t": 25, "v": [0.2, 0.2] }
+            ]
+          },
+          "blend_mode": "add",
+          "effects": [
+            { "type": "glow", "color": "#ffd93d", "radius": 4.0, "intensity": 1.0 }
+          ]
+        },
+        {
+          "id": "logo_text",
+          "type": "text",
+          "in": 15,
+          "out": 75,
+          "text": "YOUR LOGO",
+          "font": {
+            "family": "Arial",
+            "size": 80.0,
+            "weight": 700,
+            "color": "#ffffff"
+          },
+          "transform": {
+            "position": [960, 510],
+            "scale": [
+              { "t": 0, "v": [0.0, 0.0], "easing": { "type": "spring", "stiffness": 200.0, "damping": 12.0, "mass": 1.0 } },
+              { "t": 30, "v": [1.0, 1.0] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 8, "v": 1.0 }
+            ]
+          },
+          "effects": [
+            { "type": "drop_shadow", "color": "#000000", "offset_x": 0.0, "offset_y": 4.0, "blur": 20.0, "opacity": 0.8 },
+            { "type": "glow", "color": "#c084fc", "radius": 25.0, "intensity": 0.5 }
+          ]
+        },
+        {
+          "id": "tagline",
+          "type": "text",
+          "in": 35,
+          "out": 75,
+          "text": "Your tagline here",
+          "font": {
+            "family": "Arial",
+            "size": 28.0,
+            "weight": 300,
+            "color": "#a09890"
+          },
+          "transform": {
+            "position": [960, 580],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 20, "v": 1.0 }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

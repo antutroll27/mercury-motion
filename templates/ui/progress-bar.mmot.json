@@ -1,0 +1,76 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "ProgressBar",
+    "width": 400,
+    "height": 40,
+    "fps": 30,
+    "duration": 60,
+    "background": "#0a0a14",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "track_bg",
+          "type": "shape",
+          "in": 0,
+          "out": 60,
+          "shape": {
+            "shape_type": "rect",
+            "width": 380,
+            "height": 16,
+            "corner_radius": 8,
+            "fill": "#1a1a2e"
+          },
+          "transform": { "position": [200, 20] }
+        },
+        {
+          "id": "fill_bar",
+          "type": "shape",
+          "in": 0,
+          "out": 60,
+          "shape": {
+            "shape_type": "rect",
+            "width": 380,
+            "height": 16,
+            "corner_radius": 8,
+            "fill": "#0066ff"
+          },
+          "transform": {
+            "position": [200, 20],
+            "scale": [
+              { "t": 0, "v": [0.0, 1.0], "easing": "ease_in_out" },
+              { "t": 55, "v": [1.0, 1.0] }
+            ]
+          },
+          "effects": [
+            { "type": "glow", "color": "#0066ff", "radius": 6.0, "intensity": 0.3 }
+          ]
+        },
+        {
+          "id": "fill_highlight",
+          "type": "shape",
+          "in": 0,
+          "out": 60,
+          "shape": {
+            "shape_type": "rect",
+            "width": 370,
+            "height": 6,
+            "corner_radius": 3,
+            "fill": "#3399ff"
+          },
+          "transform": {
+            "position": [200, 16],
+            "scale": [
+              { "t": 0, "v": [0.0, 1.0], "easing": "ease_in_out" },
+              { "t": 55, "v": [1.0, 1.0] }
+            ],
+            "opacity": 0.25
+          }
+        }
+      ]
+    }
+  }
+}
