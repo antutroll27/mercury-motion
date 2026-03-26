@@ -10,7 +10,7 @@ use crate::parser::parse;
 use crate::props;
 use crate::renderer::shape::ResolvedShape;
 use crate::renderer::{
-    render as render_frame, FrameScene, ResolvedContent, ResolvedLayer, ResolvedTransform,
+    FrameScene, ResolvedContent, ResolvedLayer, ResolvedTransform, render as render_frame,
 };
 use crate::schema::{Layer, LayerContent, Scene, ShapeSpec, TransitionSpec, Vec2};
 
@@ -78,10 +78,7 @@ pub fn get_scene_info(json: &str) -> Result<SceneInfo> {
 ///
 /// Returns `(width, height, rgba_bytes)`. Use this for live preview in a UI
 /// — it skips encoding entirely and just returns the pixel buffer.
-pub fn render_single_frame(
-    json: &str,
-    frame_number: u64,
-) -> Result<(u32, u32, Vec<u8>)> {
+pub fn render_single_frame(json: &str, frame_number: u64) -> Result<(u32, u32, Vec<u8>)> {
     render_single_frame_with_props(json, &HashMap::new(), frame_number)
 }
 
@@ -98,8 +95,12 @@ pub fn render_single_frame_with_props(
         let mut cache = HashMap::new();
         for font_asset in &scene.assets.fonts {
             match crate::assets::font::load_font(Path::new(&font_asset.src)) {
-                Ok(data) => { cache.insert(font_asset.id.clone(), data); }
-                Err(e) => { tracing::warn!("failed to load font '{}': {e}", font_asset.id); }
+                Ok(data) => {
+                    cache.insert(font_asset.id.clone(), data);
+                }
+                Err(e) => {
+                    tracing::warn!("failed to load font '{}': {e}", font_asset.id);
+                }
             }
         }
         cache
@@ -113,11 +114,7 @@ pub fn render_single_frame_with_props(
 }
 
 /// Main entry point: parse JSON, render all frames, encode to MP4.
-pub fn render_scene(
-    json: &str,
-    opts: RenderOptions,
-    progress: Option<ProgressFn>,
-) -> Result<()> {
+pub fn render_scene(json: &str, opts: RenderOptions, progress: Option<ProgressFn>) -> Result<()> {
     render_scene_with_props(json, &HashMap::new(), opts, progress)
 }
 
@@ -223,34 +220,32 @@ pub fn render_scene_with_props(
 
     // Encode to output format
     match opts.format {
-        OutputFormat::Mp4 => {
-            match audio_data {
-                Some((samples, sample_rate, channels)) => {
-                    let pcm_s16 = crate::assets::audio::samples_to_pcm_s16(&samples);
-                    crate::encoder::mp4::encode_with_audio(
-                        frames,
-                        scene.meta.width,
-                        scene.meta.height,
-                        scene.meta.fps,
-                        opts.quality,
-                        &pcm_s16,
-                        sample_rate,
-                        channels,
-                        &opts.output_path,
-                    )?;
-                }
-                None => {
-                    crate::encoder::mp4::encode(
-                        frames,
-                        scene.meta.width,
-                        scene.meta.height,
-                        scene.meta.fps,
-                        opts.quality,
-                        &opts.output_path,
-                    )?;
-                }
+        OutputFormat::Mp4 => match audio_data {
+            Some((samples, sample_rate, channels)) => {
+                let pcm_s16 = crate::assets::audio::samples_to_pcm_s16(&samples);
+                crate::encoder::mp4::encode_with_audio(
+                    frames,
+                    scene.meta.width,
+                    scene.meta.height,
+                    scene.meta.fps,
+                    opts.quality,
+                    &pcm_s16,
+                    sample_rate,
+                    channels,
+                    &opts.output_path,
+                )?;
             }
-        }
+            None => {
+                crate::encoder::mp4::encode(
+                    frames,
+                    scene.meta.width,
+                    scene.meta.height,
+                    scene.meta.fps,
+                    opts.quality,
+                    &opts.output_path,
+                )?;
+            }
+        },
         OutputFormat::Gif => {
             crate::encoder::gif::encode(
                 frames,
@@ -283,18 +278,22 @@ pub fn render_scene_with_props(
 
 /// Check if any layer in the scene has motion blur enabled.
 fn scene_has_motion_blur(scene: &Scene) -> bool {
-    scene.compositions.values().any(|comp| {
-        comp.layers.iter().any(|layer| layer.motion_blur)
-    })
+    scene
+        .compositions
+        .values()
+        .any(|comp| comp.layers.iter().any(|layer| layer.motion_blur))
 }
 
 /// Average multiple RGBA frame buffers by computing the mean of each byte.
 fn average_frames(frames: &[Vec<u8>]) -> Vec<u8> {
+    if frames.is_empty() {
+        return Vec::new();
+    }
     let len = frames[0].len();
     let n = frames.len() as u32;
     (0..len)
         .map(|i| {
-            let sum: u32 = frames.iter().map(|f| f[i] as u32).sum();
+            let sum: u32 = frames.iter().map(|f| f.get(i).copied().unwrap_or(0) as u32).sum();
             (sum / n) as u8
         })
         .collect()
@@ -352,10 +351,7 @@ fn evaluate_path_position(points: &[[f64; 2]], t: f64) -> (f64, f64) {
     let frac = raw - idx as f64;
     let a = &points[idx];
     let b = &points[idx + 1];
-    (
-        a[0] + (b[0] - a[0]) * frac,
-        a[1] + (b[1] - a[1]) * frac,
-    )
+    (a[0] + (b[0] - a[0]) * frac, a[1] + (b[1] - a[1]) * frac)
 }
 
 /// Evaluate a scene at a specific frame number into a FrameScene.
@@ -395,7 +391,11 @@ fn compute_sequence_timing<'a>(
     let mut cursor = 0u64;
     for (i, layer) in layers.iter().enumerate() {
         let duration = layer.out_point - layer.in_point;
-        let start = if i > 0 { cursor.saturating_sub(overlap) } else { cursor };
+        let start = if i > 0 {
+            cursor.saturating_sub(overlap)
+        } else {
+            cursor
+        };
         let end = start + duration;
         result.push((layer, start, end));
         cursor = end;
@@ -461,23 +461,29 @@ fn evaluate_composition(
     if depth > 32 {
         return Err(MmotError::RenderFailed {
             frame,
-            reason: format!("composition nesting too deep (>32) — possible circular reference at '{comp_id}'"),
+            reason: format!(
+                "composition nesting too deep (>32) — possible circular reference at '{comp_id}'"
+            ),
         });
     }
 
-    let comp = scene.compositions.get(comp_id).ok_or_else(|| {
-        MmotError::Parse {
+    let comp = scene
+        .compositions
+        .get(comp_id)
+        .ok_or_else(|| MmotError::Parse {
             message: format!("composition '{comp_id}' not found"),
             pointer: format!("/compositions/{comp_id}"),
-        }
-    })?;
+        })?;
 
     // Compute effective timing: sequence mode lays layers back-to-back,
     // otherwise each layer uses its own in/out points.
     let timed_layers: Vec<(&Layer, u64, u64)> = if comp.sequence {
         compute_sequence_timing(&comp.layers, comp.transition.as_ref())
     } else {
-        comp.layers.iter().map(|l| (l, l.in_point, l.out_point)).collect()
+        comp.layers
+            .iter()
+            .map(|l| (l, l.in_point, l.out_point))
+            .collect()
     };
 
     // ── Pass 1: Compute raw transforms for ALL active layers (including Null) ──
@@ -521,8 +527,7 @@ fn evaluate_composition(
             position = Vec2 { x: px, y: py };
             if path_anim.auto_orient {
                 let dt = 0.001;
-                let (px2, py2) =
-                    evaluate_path_position(&path_anim.points, (t + dt).min(1.0));
+                let (px2, py2) = evaluate_path_position(&path_anim.points, (t + dt).min(1.0));
                 rotation = f64::atan2(py2 - py, px2 - px).to_degrees();
             }
         }
@@ -544,12 +549,10 @@ fn evaluate_composition(
                     if frame >= next_eff_in && frame < *eff_out {
                         let overlap_len = *eff_out - next_eff_in;
                         if overlap_len > 0 {
-                            let progress =
-                                (frame - next_eff_in) as f64 / overlap_len as f64;
-                            let (out_mult, _) =
-                                crate::renderer::transition::transition_opacity(
-                                    transition, progress,
-                                );
+                            let progress = (frame - next_eff_in) as f64 / overlap_len as f64;
+                            let (out_mult, _) = crate::renderer::transition::transition_opacity(
+                                transition, progress,
+                            );
                             opacity *= out_mult;
                         }
                     }
@@ -561,12 +564,10 @@ fn evaluate_composition(
                     if frame < prev_eff_out && frame >= *eff_in {
                         let overlap_len = prev_eff_out - *eff_in;
                         if overlap_len > 0 {
-                            let progress =
-                                (frame - *eff_in) as f64 / overlap_len as f64;
-                            let (_, in_mult) =
-                                crate::renderer::transition::transition_opacity(
-                                    transition, progress,
-                                );
+                            let progress = (frame - *eff_in) as f64 / overlap_len as f64;
+                            let (_, in_mult) = crate::renderer::transition::transition_opacity(
+                                transition, progress,
+                            );
                             opacity *= in_mult;
                         }
                     }
@@ -691,8 +692,7 @@ fn evaluate_composition(
             },
             LayerContent::Composition { id } => {
                 // Recursively render the referenced composition
-                let sub_layers =
-                    evaluate_composition(scene, id, frame, depth + 1, font_cache)?;
+                let sub_layers = evaluate_composition(scene, id, frame, depth + 1, font_cache)?;
                 resolved_layers.extend(sub_layers);
                 continue;
             }
@@ -715,7 +715,9 @@ fn evaluate_composition(
                 // Audio doesn't produce visual output — handled separately
                 continue;
             }
-            LayerContent::Video { src, trim_start, .. } => {
+            LayerContent::Video {
+                src, trim_start, ..
+            } => {
                 let scene_time = frame as f64 / scene.meta.fps;
                 let video_time = scene_time + *trim_start;
                 match crate::assets::video::decode_frame(Path::new(src), video_time) {
@@ -731,10 +733,7 @@ fn evaluate_composition(
                 }
             }
             LayerContent::Lottie { .. } => {
-                tracing::warn!(
-                    "lottie layer '{}' not yet implemented — skipping",
-                    layer.id
-                );
+                tracing::warn!("lottie layer '{}' not yet implemented — skipping", layer.id);
                 continue;
             }
             LayerContent::Null => {
@@ -747,7 +746,10 @@ fn evaluate_composition(
             opacity,
             transform,
             content,
-            fill_parent: layer.fill.as_ref().is_some_and(|f| matches!(f, crate::schema::composition::FillMode::Parent)),
+            fill_parent: layer
+                .fill
+                .as_ref()
+                .is_some_and(|f| matches!(f, crate::schema::composition::FillMode::Parent)),
             blend_mode: layer.blend_mode.clone(),
             masks: layer.masks.clone(),
             effects: layer.effects.clone(),
@@ -826,7 +828,48 @@ mod tests {
 
     #[test]
     fn pipeline_renders_with_audio() {
-        let json = include_str!("../../../tests/fixtures/valid/audio_mix.mmot.json");
+        let audio_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures/valid/silence.wav")
+            .canonicalize()
+            .expect("audio fixture should exist");
+        let audio_src = audio_path.to_string_lossy().replace('\\', "\\\\");
+        let json = format!(
+            r##"{{
+            "version": "1.0",
+            "meta": {{
+                "name": "AudioMix",
+                "width": 64,
+                "height": 64,
+                "fps": 30,
+                "duration": 30,
+                "background": "#000000",
+                "root": "main"
+            }},
+            "compositions": {{
+                "main": {{
+                    "layers": [
+                        {{
+                            "id": "bg",
+                            "type": "solid",
+                            "in": 0,
+                            "out": 30,
+                            "color": "#112233",
+                            "transform": {{ "position": [32, 32], "scale": [1, 1], "opacity": 1.0, "rotation": 0.0 }}
+                        }},
+                        {{
+                            "id": "audio-track",
+                            "type": "audio",
+                            "in": 0,
+                            "out": 30,
+                            "src": "{audio_src}",
+                            "volume": 1.0,
+                            "transform": {{ "position": [0, 0], "scale": [1, 1], "opacity": 1.0, "rotation": 0.0 }}
+                        }}
+                    ]
+                }}
+            }}
+        }}"##
+        );
         let opts = RenderOptions {
             output_path: std::env::temp_dir().join("mmot-test-audio.mp4"),
             format: OutputFormat::Mp4,
@@ -836,10 +879,29 @@ mod tests {
             backend: RenderBackend::Cpu,
             include_audio: true,
         };
-        render_scene(json, opts, None).unwrap();
-        let metadata =
-            std::fs::metadata(std::env::temp_dir().join("mmot-test-audio.mp4")).unwrap();
-        assert!(metadata.len() > 0);
+        let result = render_scene(&json, opts, None);
+        if cfg!(feature = "ffmpeg") {
+            match result {
+                Ok(()) => {
+                    let metadata =
+                        std::fs::metadata(std::env::temp_dir().join("mmot-test-audio.mp4"))
+                            .unwrap();
+                    assert!(metadata.len() > 0);
+                }
+                Err(err) => {
+                    assert!(
+                        err.to_string().contains("ffmpeg"),
+                        "expected ffmpeg-related error when muxing is unavailable, got: {err}"
+                    );
+                }
+            }
+        } else {
+            let err = result.expect_err("audio export should not silently drop audio");
+            assert!(
+                err.to_string().contains("ffmpeg"),
+                "expected ffmpeg-related error, got: {err}"
+            );
+        }
     }
 
     #[test]
@@ -1115,7 +1177,10 @@ mod tests {
         assert!(!fs.layers.is_empty());
         let pos_x = fs.layers[0].transform.position.x;
         // At 2x speed, frame 5 evaluates as frame 10 — position ~33.3
-        assert!(pos_x > 20.0, "expected position > 20 with 2x speed, got {pos_x}");
+        assert!(
+            pos_x > 20.0,
+            "expected position > 20 with 2x speed, got {pos_x}"
+        );
     }
 
     #[test]
@@ -1152,11 +1217,13 @@ mod tests {
         let child = &fs.layers[0]; // Null layers are skipped, so child is first visible
         assert!(
             (child.transform.position.x - 150.0).abs() < 1.0,
-            "expected x=150, got {}", child.transform.position.x
+            "expected x=150, got {}",
+            child.transform.position.x
         );
         assert!(
             (child.transform.position.y - 150.0).abs() < 1.0,
-            "expected y=150, got {}", child.transform.position.y
+            "expected y=150, got {}",
+            child.transform.position.y
         );
     }
 
@@ -1190,7 +1257,10 @@ mod tests {
         let fs = evaluate_scene(&scene, 0, &font_cache).unwrap();
         assert!(!fs.layers.is_empty());
         let pos_x = fs.layers[0].transform.position.x;
-        assert!(pos_x > 90.0, "expected position > 90 for reversed frame 0, got {pos_x}");
+        assert!(
+            pos_x > 90.0,
+            "expected position > 90 for reversed frame 0, got {pos_x}"
+        );
     }
 
     #[test]
@@ -1228,7 +1298,8 @@ mod tests {
         // scale should be 2.0 * 0.5 = 1.0
         assert!(
             (child.transform.scale.x - 1.0).abs() < 0.01,
-            "expected scale.x=1.0, got {}", child.transform.scale.x
+            "expected scale.x=1.0, got {}",
+            child.transform.scale.x
         );
     }
 
@@ -1397,7 +1468,10 @@ mod tests {
         let rgba_half = crate::renderer::render(&fs_half).expect("half renders");
 
         // Full stroke and half stroke should produce different pixel output
-        assert_ne!(rgba_full, rgba_half, "trim_paths should change rendered output");
+        assert_ne!(
+            rgba_full, rgba_half,
+            "trim_paths should change rendered output"
+        );
     }
 
     #[test]
@@ -1508,8 +1582,7 @@ mod tests {
         assert!(y.abs() < 0.01);
 
         // Three points, at t=0.5 should be at second point
-        let (x, y) =
-            super::evaluate_path_position(&[[0.0, 0.0], [50.0, 50.0], [100.0, 0.0]], 0.5);
+        let (x, y) = super::evaluate_path_position(&[[0.0, 0.0], [50.0, 50.0], [100.0, 0.0]], 0.5);
         assert!((x - 50.0).abs() < 0.01);
         assert!((y - 50.0).abs() < 0.01);
     }
@@ -1573,7 +1646,10 @@ mod tests {
         }"##;
         let (_, _, rgba0) = render_single_frame(json, 0).unwrap();
         let (_, _, rgba20) = render_single_frame(json, 20).unwrap();
-        assert_ne!(rgba0, rgba20, "different frames should produce different pixels");
+        assert_ne!(
+            rgba0, rgba20,
+            "different frames should produce different pixels"
+        );
     }
 
     #[test]

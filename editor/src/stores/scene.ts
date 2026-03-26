@@ -149,6 +149,8 @@ export const useSceneStore = defineStore('scene', () => {
 
   function play() {
     if (isPlaying.value) return
+    // Clear any stale interval before starting
+    if (playInterval) { clearInterval(playInterval); playInterval = null }
     isPlaying.value = true
     const fps = scene.value.meta.fps
     playInterval = setInterval(() => {

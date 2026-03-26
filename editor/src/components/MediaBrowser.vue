@@ -111,6 +111,10 @@ function addToTimeline(asset: { name: string, path: string, type: string }) {
 }
 
 function removeAsset(index: number) {
+  const asset = assets.value[index]
+  if (asset?.path?.startsWith('blob:')) {
+    URL.revokeObjectURL(asset.path)
+  }
   assets.value.splice(index, 1)
 }
 </script>

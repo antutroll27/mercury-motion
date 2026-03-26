@@ -26,6 +26,9 @@ const scrubberPosition = computed(() => {
 
 // --- Scrubber ---
 function handleScrubStart(e: MouseEvent) {
+  // Clean up any stale listeners before adding new ones
+  window.removeEventListener('mousemove', handleScrubMove)
+  window.removeEventListener('mouseup', handleScrubEnd)
   isScrubbing.value = true
   scrubToPosition(e)
   window.addEventListener('mousemove', handleScrubMove)
@@ -53,6 +56,9 @@ function handleScrubEnd() {
 // --- Layer bar drag (move timing) ---
 function handleBarDragStart(e: MouseEvent, layer: any) {
   e.stopPropagation()
+  // Clean up any stale listeners before adding new ones
+  window.removeEventListener('mousemove', handleBarDragMove)
+  window.removeEventListener('mouseup', handleBarDragEnd)
   dragLayerId.value = layer.id
   dragStartX.value = e.clientX
   dragOrigIn.value = layer.in

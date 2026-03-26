@@ -7,7 +7,7 @@
  * @packageDocumentation
  */
 
-import { execSync } from 'child_process'
+import { execFileSync } from 'child_process'
 import { writeFileSync, mkdtempSync, unlinkSync, rmSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
@@ -67,8 +67,8 @@ export async function render(scene: Scene, options?: RenderOptions): Promise<str
   try {
     const args = [
       'render',
-      `"${tmpFile}"`,
-      '--output', `"${output}"`,
+      tmpFile,
+      '--output', output,
       '--format', format,
       '--quality', String(quality),
     ]
@@ -76,8 +76,7 @@ export async function render(scene: Scene, options?: RenderOptions): Promise<str
       args.push('--verbose')
     }
 
-    const cmd = `${bin} ${args.join(' ')}`
-    execSync(cmd, {
+    execFileSync(bin, args, {
       stdio: options?.verbose ? 'inherit' : 'pipe',
       timeout,
     })
