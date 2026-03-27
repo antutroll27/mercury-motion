@@ -13,8 +13,8 @@ pub use composition::{
 };
 pub use easing::EasingValue;
 pub use effects::{
-    BlendMode, Effect, Mask, MaskMode, MaskPath, PathAnimation, TimeRemap, TrackMatte,
-    TrackMatteMode, TrimPaths,
+    BlendMode, Effect, FcurveModifier, LoopMode, Mask, MaskMode, MaskPath, PathAnimation,
+    TimeRemap, TrackMatte, TrackMatteMode, TrimPaths,
 };
 pub use scene::{Assets, Meta, PropDef, PropType, SafeZone, Scene};
 pub use transform::Transform;
