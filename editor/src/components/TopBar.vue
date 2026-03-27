@@ -5,6 +5,30 @@ import { renderToFile } from '../lib/tauri-commands'
 
 const store = useSceneStore()
 const isExporting = ref(false)
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+function openFile() {
+  fileInputRef.value?.click()
+}
+
+function handleFileLoad(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (!input.files?.length) return
+  const file = input.files[0]
+  const reader = new FileReader()
+  reader.onload = () => {
+    try {
+      const json = reader.result as string
+      JSON.parse(json) // validate it's JSON
+      store.fromJson(json)
+      store.setFrame(0)
+    } catch (err) {
+      alert(`Invalid .mmot.json file: ${err}`)
+    }
+  }
+  reader.readAsText(file)
+  input.value = '' // reset so same file can be re-loaded
+}
 
 async function handleExport() {
   isExporting.value = true
@@ -56,6 +80,21 @@ async function handleExport() {
     <div class="font-mono text-xs text-text-muted uppercase tracking-widest">
       Frame {{ store.currentFrame }} / {{ store.totalFrames }}
     </div>
+
+    <!-- Open File -->
+    <input
+      ref="fileInputRef"
+      type="file"
+      accept=".mmot.json,.json"
+      class="hidden"
+      @change="handleFileLoad"
+    />
+    <button
+      class="px-3 py-1.5 bg-cosmos-deep border border-cosmos-border text-text-muted text-xs font-mono uppercase tracking-widest rounded hover:border-crimson hover:text-crimson transition-colors"
+      @click="openFile"
+    >
+      Open
+    </button>
 
     <div class="flex-1" />
 
