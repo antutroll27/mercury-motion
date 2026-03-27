@@ -70,6 +70,92 @@ function parseHexColor(hex: string): string {
   return hex.startsWith('#') ? hex : `#${hex}`
 }
 
+// --- Keyframe interpolation (matches Rust evaluator) ---
+
+function isKeyframeArray(val: any): val is { t: number; v: any; easing?: any }[] {
+  return Array.isArray(val) && val.length > 0 && typeof val[0] === 'object' && 't' in val[0]
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t
+}
+
+function applyEasing(t: number, easing: any): number {
+  if (!easing || easing === 'linear') return t
+  const presets: Record<string, [number, number, number, number]> = {
+    ease_in: [0.42, 0, 1, 1],
+    ease_out: [0, 0, 0.58, 1],
+    ease_in_out: [0.42, 0, 0.58, 1],
+  }
+  let cx1 = 0, cy1 = 0, cx2 = 1, cy2 = 1
+  if (typeof easing === 'string' && presets[easing]) {
+    [cx1, cy1, cx2, cy2] = presets[easing]
+  } else if (easing?.type === 'cubic_bezier') {
+    cx1 = easing.x1; cy1 = easing.y1; cx2 = easing.x2; cy2 = easing.y2
+  } else if (easing?.type === 'spring') {
+    // Approximate spring with ease_out
+    [cx1, cy1, cx2, cy2] = [0, 0, 0.58, 1]
+  } else {
+    return t
+  }
+  // Newton's method cubic bezier solver (8 iterations)
+  let x = t
+  for (let i = 0; i < 8; i++) {
+    const bx = 3 * cx1, dx = 3 * (cx2 - cx1) - bx, ax = 1 - bx - dx
+    const curX = ((ax * x + dx) * x + bx) * x
+    const slope = (3 * ax * x + 2 * dx) * x + bx
+    if (Math.abs(slope) < 1e-6) break
+    x -= (curX - t) / slope
+  }
+  const by = 3 * cy1, dy = 3 * (cy2 - cy1) - by, ay = 1 - by - dy
+  return ((ay * x + dy) * x + by) * x
+}
+
+function evalNumber(val: any, frame: number): number {
+  if (typeof val === 'number') return val
+  if (isKeyframeArray(val)) {
+    const kfs = val
+    if (kfs.length === 0) return 0
+    if (frame <= kfs[0].t) return kfs[0].v
+    if (frame >= kfs[kfs.length - 1].t) return kfs[kfs.length - 1].v
+    for (let i = 0; i < kfs.length - 1; i++) {
+      if (frame >= kfs[i].t && frame <= kfs[i + 1].t) {
+        const span = kfs[i + 1].t - kfs[i].t
+        const rawT = span > 0 ? (frame - kfs[i].t) / span : 0
+        const t = applyEasing(Math.max(0, Math.min(1, rawT)), kfs[i].easing)
+        return lerp(kfs[i].v, kfs[i + 1].v, t)
+      }
+    }
+    return kfs[kfs.length - 1].v
+  }
+  return typeof val === 'number' ? val : 0
+}
+
+function evalVec2(val: any, frame: number): [number, number] {
+  if (Array.isArray(val) && val.length === 2 && typeof val[0] === 'number') {
+    return val as [number, number]
+  }
+  if (isKeyframeArray(val)) {
+    const kfs = val
+    if (kfs.length === 0) return [0, 0]
+    if (frame <= kfs[0].t) return kfs[0].v
+    if (frame >= kfs[kfs.length - 1].t) return kfs[kfs.length - 1].v
+    for (let i = 0; i < kfs.length - 1; i++) {
+      if (frame >= kfs[i].t && frame <= kfs[i + 1].t) {
+        const span = kfs[i + 1].t - kfs[i].t
+        const rawT = span > 0 ? (frame - kfs[i].t) / span : 0
+        const t = applyEasing(Math.max(0, Math.min(1, rawT)), kfs[i].easing)
+        return [
+          lerp(kfs[i].v[0], kfs[i + 1].v[0], t),
+          lerp(kfs[i].v[1], kfs[i + 1].v[1], t),
+        ]
+      }
+    }
+    return kfs[kfs.length - 1].v
+  }
+  return [0, 0]
+}
+
 // Map mmot blend modes to Canvas composite operations
 const blendModeMap: Record<string, GlobalCompositeOperation> = {
   normal: 'source-over',
@@ -113,13 +199,13 @@ function renderBrowserPreview() {
 
     ctx.save()
 
-    // Apply transform
-    const pos = Array.isArray(layer.transform.position) ? layer.transform.position : [0, 0]
-    const scale = layer.transform.scale || [1, 1]
-    const rotation = layer.transform.rotation || 0
-    const opacity = layer.transform.opacity ?? 1
+    // Apply transform — interpolate keyframes at current frame
+    const pos = evalVec2(layer.transform.position, frame)
+    const scale = evalVec2(layer.transform.scale ?? [1, 1], frame)
+    const rotation = evalNumber(layer.transform.rotation ?? 0, frame)
+    const opacity = evalNumber(layer.transform.opacity ?? 1, frame)
 
-    ctx.globalAlpha = typeof opacity === 'number' ? opacity : 1
+    ctx.globalAlpha = Math.max(0, Math.min(1, opacity))
 
     ctx.translate(pos[0], pos[1])
     ctx.rotate((rotation * Math.PI) / 180)
