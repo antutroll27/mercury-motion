@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "${title}",
+    "width": 640,
+    "height": 360,
+    "fps": 30,
+    "duration": 15,
+    "root": "main",
+    "background": "${bg_color}"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "bg",
+          "type": "solid",
+          "in": 0,
+          "out": 15,
+          "color": "${bg_color}",
+          "fill": "parent",
+          "transform": { "position": [320, 180] }
+        },
+        {
+          "id": "title",
+          "type": "text",
+          "in": 0,
+          "out": 15,
+          "text": "${title}",
+          "font": {
+            "family": "Inter",
+            "size": 48,
+            "weight": 700,
+            "color": "#f5f0e8"
+          },
+          "transform": { "position": [320, 180] }
+        }
+      ]
+    }
+  },
+  "assets": { "fonts": [] }
+}

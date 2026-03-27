@@ -1,5 +1,7 @@
 pub mod accessibility;
 pub mod assets;
+#[cfg(feature = "native-renderer")]
+pub mod batch;
 pub mod diff;
 #[cfg(feature = "native-renderer")]
 pub mod encoder;
@@ -12,3 +14,6 @@ pub mod pipeline;
 pub mod props;
 pub mod renderer;
 pub mod schema;
+pub mod tokens;
+#[cfg(feature = "native-renderer")]
+pub mod visual_test;
