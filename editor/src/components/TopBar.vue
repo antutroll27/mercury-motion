@@ -33,27 +33,43 @@ function handleFileLoad(e: Event) {
 async function handleExport() {
   isExporting.value = true
   try {
-    let outputPath = 'output.mp4'
+    // Check if Tauri is available
+    const isTauri = !!(window as any).__TAURI_INTERNALS__
 
-    // Try to open a save dialog via Tauri dialog plugin
-    try {
-      const { invoke } = await import('@tauri-apps/api/core')
-      const path = await invoke<string | null>('plugin:dialog|save', {
-        filters: [
-          { name: 'MP4', extensions: ['mp4'] },
-          { name: 'GIF', extensions: ['gif'] },
-          { name: 'WebM', extensions: ['webm'] },
-        ]
-      })
-      if (path) outputPath = path
-    } catch {
-      // TODO: dialog plugin not available, using default path
-      console.warn('Save dialog not available, exporting to default path:', outputPath)
+    if (isTauri) {
+      // Tauri mode: render to file via backend
+      let outputPath = 'output.mp4'
+      try {
+        const { invoke } = await import('@tauri-apps/api/core')
+        const path = await invoke<string | null>('plugin:dialog|save', {
+          filters: [
+            { name: 'MP4', extensions: ['mp4'] },
+            { name: 'GIF', extensions: ['gif'] },
+            { name: 'WebM', extensions: ['webm'] },
+          ]
+        })
+        if (path) outputPath = path
+      } catch { /* dialog not available */ }
+
+      const format = outputPath.endsWith('.gif') ? 'gif' : outputPath.endsWith('.webm') ? 'webm' : 'mp4'
+      await renderToFile(store.toJson(), outputPath, format, 80)
+      alert(`Exported to ${outputPath}`)
+    } else {
+      // Browser mode: download .mmot.json file
+      const json = store.toJson()
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${store.scene.meta.name || 'scene'}.mmot.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
+      // Also show instructions for CLI rendering
+      alert(`Scene downloaded as .mmot.json\n\nTo render to video, run:\n  mmot render ${a.download} --output video.mp4`)
     }
-
-    const format = outputPath.endsWith('.gif') ? 'gif' : outputPath.endsWith('.webm') ? 'webm' : 'mp4'
-    await renderToFile(store.toJson(), outputPath, format, 80)
-    alert(`Exported to ${outputPath}`)
   } catch (e) {
     console.error('Export failed:', e)
     alert(`Export failed: ${e}`)
