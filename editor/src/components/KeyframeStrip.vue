@@ -115,7 +115,7 @@ onBeforeUnmount(() => {
     <div
       v-if="isAnimated && keyframes"
       ref="stripRef"
-      class="flex-1 h-3 bg-cosmos-deep rounded relative cursor-pointer"
+      class="flex-1 h-5 bg-cosmos-deep rounded relative cursor-pointer"
       @contextmenu.prevent="handleStripContext"
     >
       <!-- Playhead marker -->
@@ -124,14 +124,14 @@ onBeforeUnmount(() => {
         :style="{ left: `${(store.currentFrame / store.totalFrames) * 100}%` }"
       />
 
-      <!-- Keyframe diamonds -->
+      <!-- Keyframe diamonds — larger hit area for dragging -->
       <div
         v-for="(kf, idx) in keyframes"
         :key="idx"
-        class="absolute top-1/2 -translate-y-1/2 w-2 h-2 rotate-45 cursor-grab active:cursor-grabbing transition-colors"
-        :class="kf.t === store.currentFrame ? 'bg-yellow-400' : 'bg-marble hover:bg-crimson'"
-        :style="{ left: `calc(${(kf.t / store.totalFrames) * 100}% - 4px)` }"
-        :title="`Frame ${kf.t}: ${typeof kf.v === 'number' ? kf.v.toFixed(2) : JSON.stringify(kf.v)}`"
+        class="absolute top-1/2 -translate-y-1/2 w-3 h-3 rotate-45 cursor-grab active:cursor-grabbing transition-colors border"
+        :class="kf.t === store.currentFrame ? 'bg-yellow-400 border-yellow-300' : 'bg-marble border-marble/60 hover:bg-crimson hover:border-crimson'"
+        :style="{ left: `calc(${(kf.t / store.totalFrames) * 100}% - 6px)` }"
+        :title="`Frame ${kf.t}: ${typeof kf.v === 'number' ? kf.v.toFixed(2) : JSON.stringify(kf.v)}\nDrag to retime · Right-click to delete`"
         @mousedown="handleDragStart($event, idx)"
       />
     </div>
