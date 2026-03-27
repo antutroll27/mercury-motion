@@ -10,6 +10,9 @@ use crate::schema::composition::Compositions;
 pub struct Scene {
     pub version: String,
     pub meta: Meta,
+    /// Design tokens — named values referenced with `$token.name` syntax.
+    #[serde(default)]
+    pub tokens: HashMap<String, serde_json::Value>,
     #[serde(default)]
     pub props: HashMap<String, PropDef>,
     pub compositions: Compositions,

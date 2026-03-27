@@ -7,7 +7,10 @@ use crate::schema::Scene;
 ///
 /// Returns `MmotError::Parse` with a JSON pointer path on failure.
 pub fn parse(json: &str) -> Result<Scene> {
-    let deserializer = &mut serde_json::Deserializer::from_str(json);
+    // Resolve design tokens before deserialization
+    let resolved = crate::tokens::resolve_tokens(json)?;
+
+    let deserializer = &mut serde_json::Deserializer::from_str(&resolved);
     let scene: Scene =
         serde_path_to_error::deserialize(deserializer).map_err(|e| MmotError::Parse {
             message: e.inner().to_string(),
@@ -72,6 +75,17 @@ mod tests {
         let json = include_str!("../../../../tests/fixtures/valid/spring.mmot.json");
         let scene = parse(json).unwrap();
         assert_eq!(scene.meta.name, "SpringAnim");
+    }
+
+    #[test]
+    fn parse_valid_tokens() {
+        let json = include_str!("../../../../tests/fixtures/valid/tokens.mmot.json");
+        let scene = parse(json).unwrap();
+        assert_eq!(scene.meta.name, "TokensDemo");
+        // Token resolution should have replaced $brand.secondary with #003049
+        assert_eq!(scene.meta.background, "#003049");
+        // Token map should still be present in the scene
+        assert!(scene.tokens.contains_key("brand.primary"));
     }
 
     #[test]
