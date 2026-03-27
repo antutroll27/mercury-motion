@@ -2626,6 +2626,7 @@ dependencies = [
  "serde_path_to_error",
  "skia-safe",
  "symphonia",
+ "tempfile",
  "thiserror 2.0.18",
  "tracing",
 ]

@@ -41,3 +41,4 @@ ffmpeg-sys-next = { version = "8", optional = true, default-features = false }
 [dev-dependencies]
 pretty_assertions = "1"
 image = { workspace = true }
+tempfile = "3"
