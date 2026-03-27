@@ -28,7 +28,9 @@ pub fn resolve_tokens(json: &str) -> crate::error::Result<String> {
         return Ok(json.to_string());
     }
 
-    // Replace all $token.name references in the JSON string
+    // Replace all $token.name references in the JSON string.
+    // Only token values that DON'T contain $ references are substituted,
+    // preventing recursive/chained token expansion (single pass, no cascading).
     let mut result = json.to_string();
 
     // Sort tokens by key length (longest first) to avoid partial matches

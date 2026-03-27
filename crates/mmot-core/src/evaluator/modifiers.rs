@@ -44,7 +44,7 @@ fn apply_single_f64(
             frequency,
             seed,
         } => {
-            let time = frame as f64 / fps;
+            let time = if fps > 0.0 { frame as f64 / fps } else { 0.0 };
             let noise = pseudo_noise(time * frequency, *seed);
             value + noise * amplitude
         }
@@ -54,7 +54,10 @@ fn apply_single_f64(
             // would need to be handled upstream if implemented.
             value
         }
-        FcurveModifier::Clamp { min, max } => value.clamp(*min, *max),
+        FcurveModifier::Clamp { min, max } => {
+            let (lo, hi) = if min <= max { (*min, *max) } else { (*max, *min) };
+            value.clamp(lo, hi)
+        }
     }
 }
 
@@ -71,7 +74,7 @@ fn apply_single_vec2(
             frequency,
             seed,
         } => {
-            let time = frame as f64 / fps;
+            let time = if fps > 0.0 { frame as f64 / fps } else { 0.0 };
             // Use different seed offsets for x and y to avoid correlated noise
             let noise_x = pseudo_noise(time * frequency, *seed);
             let noise_y = pseudo_noise(time * frequency, seed.wrapping_add(7919));
@@ -81,10 +84,13 @@ fn apply_single_vec2(
             }
         }
         FcurveModifier::Loop { mode: _ } => value,
-        FcurveModifier::Clamp { min, max } => Vec2 {
-            x: value.x.clamp(*min, *max),
-            y: value.y.clamp(*min, *max),
-        },
+        FcurveModifier::Clamp { min, max } => {
+            let (lo, hi) = if min <= max { (*min, *max) } else { (*max, *min) };
+            Vec2 {
+                x: value.x.clamp(lo, hi),
+                y: value.y.clamp(lo, hi),
+            }
+        }
     }
 }
 
