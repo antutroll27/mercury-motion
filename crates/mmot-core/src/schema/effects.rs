@@ -236,6 +236,51 @@ pub struct PathAnimation {
     pub auto_orient: bool,
 }
 
+// ── FcurveModifier ──────────────────────────────────────────────────────────────
+
+/// A modifier that post-processes an interpolated animation value.
+/// Modifiers are applied in order after keyframe evaluation.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum FcurveModifier {
+    /// Add deterministic pseudo-random noise to the value.
+    Wiggle {
+        #[serde(default = "default_amplitude")]
+        amplitude: f64,
+        #[serde(default = "default_frequency")]
+        frequency: f64,
+        #[serde(default)]
+        seed: u32,
+    },
+    /// Loop the animation using repeat or ping-pong.
+    Loop {
+        #[serde(default)]
+        mode: LoopMode,
+    },
+    /// Clamp the value to a min/max range.
+    Clamp {
+        min: f64,
+        max: f64,
+    },
+}
+
+/// How a looped animation repeats after the last keyframe.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum LoopMode {
+    #[default]
+    Repeat,
+    PingPong,
+}
+
+fn default_amplitude() -> f64 {
+    0.1
+}
+
+fn default_frequency() -> f64 {
+    3.0
+}
+
 // ── Tests ───────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]

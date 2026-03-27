@@ -1,0 +1,76 @@
+{
+  "version": "1.0",
+  "tokens": {
+    "brand.primary": "#c1121f",
+    "brand.secondary": "#003049",
+    "brand.text": "#f5f0e8",
+    "font.heading": "Playfair Display",
+    "font.body": "Inter",
+    "duration.fast": 8,
+    "duration.normal": 15
+  },
+  "meta": {
+    "name": "TokensDemo",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "duration": 30,
+    "background": "$brand.secondary",
+    "root": "main"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "bg",
+          "type": "solid",
+          "in": 0,
+          "out": 30,
+          "color": "$brand.secondary",
+          "transform": {
+            "position": [960.0, 540.0],
+            "scale": [1.0, 1.0],
+            "opacity": 1.0,
+            "rotation": 0.0
+          }
+        },
+        {
+          "id": "title",
+          "type": "text",
+          "in": 0,
+          "out": "$duration.normal",
+          "text": "Design Tokens",
+          "font": {
+            "family": "$font.heading",
+            "size": 72,
+            "color": "$brand.text"
+          },
+          "transform": {
+            "position": [960.0, 400.0],
+            "scale": [1.0, 1.0],
+            "opacity": 1.0,
+            "rotation": 0.0
+          }
+        },
+        {
+          "id": "subtitle",
+          "type": "text",
+          "in": "$duration.fast",
+          "out": 30,
+          "text": "Reusable named values",
+          "font": {
+            "family": "$font.body",
+            "size": 36,
+            "color": "$brand.primary"
+          },
+          "transform": {
+            "position": [960.0, 520.0],
+            "scale": [1.0, 1.0],
+            "opacity": 1.0,
+            "rotation": 0.0
+          }
+        }
+      ]
+    }
+  }
+}

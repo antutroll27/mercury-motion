@@ -98,6 +98,43 @@ enum Commands {
         #[arg(long)]
         no_color: bool,
     },
+    /// Visual regression test — compare rendered frames against golden references
+    Test {
+        /// .mmot.json file to test
+        file: PathBuf,
+        /// Update golden references instead of comparing
+        #[arg(long)]
+        update: bool,
+        /// Golden directory (default: tests/golden/{scene_name}/)
+        #[arg(long)]
+        golden_dir: Option<PathBuf>,
+        /// Frames to test (comma-separated, e.g. "0,15,29")
+        #[arg(long)]
+        frames: Option<String>,
+        /// Pixel difference tolerance percentage (default: 0.1)
+        #[arg(long, default_value_t = 0.1)]
+        tolerance: f64,
+    },
+    /// Batch-render videos from a template + CSV/JSON data source
+    Batch {
+        /// Template .mmot.json file with ${variable} placeholders
+        file: PathBuf,
+        /// Data source file (CSV or JSON array)
+        #[arg(long)]
+        data: PathBuf,
+        /// Output directory for rendered videos
+        #[arg(short = 'd', long, default_value = "./batch-output")]
+        output_dir: PathBuf,
+        /// Output format: mp4, gif, webm
+        #[arg(short, long, default_value = "mp4")]
+        format: String,
+        /// Encode quality (1-100)
+        #[arg(short, long, default_value_t = 80)]
+        quality: u8,
+        /// Verbose output
+        #[arg(short, long)]
+        verbose: bool,
+    },
     /// Enter interactive REPL mode
     Interactive,
 }
@@ -291,6 +328,171 @@ fn run(cli: Cli) -> anyhow::Result<()> {
             print!("{output}");
 
             if report.critical_count() > 0 {
+                std::process::exit(1);
+            }
+            Ok(())
+        }
+        Commands::Test {
+            file,
+            update,
+            golden_dir,
+            frames,
+            tolerance,
+        } => {
+            let json = std::fs::read_to_string(&file)
+                .with_context(|| format!("cannot read {}", file.display()))?;
+
+            let info = mmot_core::pipeline::get_scene_info(&json)
+                .with_context(|| format!("failed to parse {}", file.display()))?;
+
+            // Determine golden directory
+            let golden_dir = golden_dir.unwrap_or_else(|| {
+                let stem = file
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("unknown");
+                // Strip .mmot suffix if present (file is foo.mmot.json -> stem is foo.mmot)
+                let clean_stem = stem.strip_suffix(".mmot").unwrap_or(stem);
+                PathBuf::from("tests/golden").join(clean_stem)
+            });
+
+            // Determine frames to test
+            let frame_list: Vec<u64> = if let Some(ref spec) = frames {
+                spec.split(',')
+                    .map(|s| {
+                        s.trim()
+                            .parse::<u64>()
+                            .map_err(|_| anyhow::anyhow!("invalid frame number: '{}'", s.trim()))
+                    })
+                    .collect::<anyhow::Result<Vec<_>>>()?
+            } else {
+                mmot_core::visual_test::default_frames(info.duration_frames)
+            };
+
+            if update {
+                let count =
+                    mmot_core::visual_test::update_goldens(&json, &golden_dir, &frame_list)
+                        .with_context(|| "failed to generate golden frames")?;
+                println!(
+                    "generated {count} golden frame(s) in {}",
+                    golden_dir.display()
+                );
+            } else {
+                let result = mmot_core::visual_test::run_visual_test(
+                    &json,
+                    &file,
+                    &golden_dir,
+                    &frame_list,
+                    tolerance,
+                )
+                .with_context(|| "visual test failed")?;
+
+                if result.passed() {
+                    println!(
+                        "PASS ({} frame(s) match)",
+                        result.frames_passed
+                    );
+                } else {
+                    println!(
+                        "FAIL ({}/{} frame(s) passed)",
+                        result.frames_passed, result.frames_tested
+                    );
+                    for f in &result.failures {
+                        println!(
+                            "  frame {} differs: {:.2}% pixel difference",
+                            f.frame, f.pixel_diff_percent
+                        );
+                        if f.actual_path.as_os_str().is_empty() {
+                            println!("    golden not found: {}", f.golden_path.display());
+                        } else {
+                            println!("    golden:  {}", f.golden_path.display());
+                            println!("    actual:  {}", f.actual_path.display());
+                        }
+                    }
+                    std::process::exit(1);
+                }
+            }
+            Ok(())
+        }
+        Commands::Batch {
+            file,
+            data,
+            output_dir,
+            format,
+            quality,
+            verbose,
+        } => {
+            let template_json = std::fs::read_to_string(&file)
+                .with_context(|| format!("cannot read template {}", file.display()))?;
+
+            let format = match format.to_lowercase().as_str() {
+                "mp4" => mmot_core::pipeline::OutputFormat::Mp4,
+                "gif" => mmot_core::pipeline::OutputFormat::Gif,
+                "webm" => mmot_core::pipeline::OutputFormat::Webm,
+                other => {
+                    anyhow::bail!("unsupported format: '{other}' (expected mp4, gif, or webm)")
+                }
+            };
+
+            // Detect data format by extension
+            let ext = data
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+            let data_rows = match ext.as_str() {
+                "csv" => mmot_core::batch::parse_csv(&data)
+                    .with_context(|| format!("failed to parse CSV {}", data.display()))?,
+                "json" => mmot_core::batch::parse_json_data(&data)
+                    .with_context(|| format!("failed to parse JSON data {}", data.display()))?,
+                other => {
+                    anyhow::bail!(
+                        "unsupported data format: '.{other}' (expected .csv or .json)"
+                    )
+                }
+            };
+
+            if verbose {
+                eprintln!(
+                    "Batch: {} rows from {}, rendering to {}",
+                    data_rows.len(),
+                    data.display(),
+                    output_dir.display()
+                );
+            }
+
+            let progress: Option<Box<dyn Fn(usize, usize) + Send + Sync>> = if verbose {
+                Some(Box::new(|current, total| {
+                    eprint!("\rRendering {current}/{total}");
+                }))
+            } else {
+                None
+            };
+
+            let opts = mmot_core::batch::BatchOptions {
+                template_json,
+                output_dir: output_dir.clone(),
+                format,
+                quality,
+                concurrency: None,
+            };
+
+            let result = mmot_core::batch::render_batch(opts, &data_rows, progress)
+                .with_context(|| "batch render failed")?;
+
+            if verbose {
+                eprintln!();
+            }
+            println!(
+                "batch complete: {}/{} rendered to {}",
+                result.rendered,
+                result.total,
+                output_dir.display()
+            );
+            for (idx, err) in &result.failed {
+                eprintln!("  row {idx} failed: {err}");
+            }
+            if !result.failed.is_empty() {
                 std::process::exit(1);
             }
             Ok(())

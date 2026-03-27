@@ -10,6 +10,7 @@ use rayon::prelude::*;
 
 use crate::error::{MmotError, Result};
 use crate::evaluator::interpolate::{evaluate_f64, evaluate_vec2};
+use crate::evaluator::modifiers::{apply_modifiers_f64, apply_modifiers_vec2};
 use crate::parser::parse;
 #[cfg(feature = "native-renderer")]
 use crate::props;
@@ -731,9 +732,25 @@ fn evaluate_composition(
         };
 
         let mut position = evaluate_vec2(&layer.transform.position, effective_frame);
-        let scale = evaluate_vec2(&layer.transform.scale, effective_frame);
+        let mut scale = evaluate_vec2(&layer.transform.scale, effective_frame);
         let mut opacity = evaluate_f64(&layer.transform.opacity, effective_frame);
         let mut rotation = evaluate_f64(&layer.transform.rotation, effective_frame);
+
+        // Apply F-curve modifiers to transform properties
+        let fps = scene.meta.fps;
+        let total_frames = scene.meta.duration;
+        if let Some(ref mods) = layer.transform.opacity_modifiers {
+            opacity = apply_modifiers_f64(opacity, effective_frame, fps, total_frames, mods);
+        }
+        if let Some(ref mods) = layer.transform.rotation_modifiers {
+            rotation = apply_modifiers_f64(rotation, effective_frame, fps, total_frames, mods);
+        }
+        if let Some(ref mods) = layer.transform.position_modifiers {
+            position = apply_modifiers_vec2(position, effective_frame, fps, total_frames, mods);
+        }
+        if let Some(ref mods) = layer.transform.scale_modifiers {
+            scale = apply_modifiers_vec2(scale, effective_frame, fps, total_frames, mods);
+        }
 
         // Apply path animation: move position along a polyline path
         if let Some(ref path_anim) = layer.path_animation {

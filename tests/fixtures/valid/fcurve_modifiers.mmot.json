@@ -1,0 +1,56 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "F-Curve Modifiers Test",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "duration": 60,
+    "root": "main",
+    "background": "#000000"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "wiggle_box",
+          "type": "solid",
+          "in": 0,
+          "out": 60,
+          "color": "#ff4444",
+          "width": 200,
+          "height": 200,
+          "transform": {
+            "position": [960, 540],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 30, "v": 1.0 }
+            ],
+            "opacity_modifiers": [
+              { "type": "wiggle", "amplitude": 0.1, "frequency": 5.0, "seed": 42 },
+              { "type": "clamp", "min": 0.0, "max": 1.0 }
+            ],
+            "rotation_modifiers": [
+              { "type": "wiggle", "amplitude": 5.0, "frequency": 2.0, "seed": 7 }
+            ],
+            "position_modifiers": [
+              { "type": "wiggle", "amplitude": 10.0, "frequency": 3.0, "seed": 99 }
+            ]
+          }
+        },
+        {
+          "id": "static_box",
+          "type": "solid",
+          "in": 0,
+          "out": 60,
+          "color": "#4444ff",
+          "width": 100,
+          "height": 100,
+          "transform": {
+            "position": [200, 200]
+          }
+        }
+      ]
+    }
+  }
+}
