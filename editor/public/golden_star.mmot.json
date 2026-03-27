@@ -1,0 +1,247 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "Golden Star",
+    "width": 1080,
+    "height": 1080,
+    "fps": 30,
+    "duration": 90,
+    "root": "main",
+    "background": "#0a0a14"
+  },
+  "compositions": {
+    "main": {
+      "layers": [
+        {
+          "id": "bg_gradient",
+          "type": "gradient",
+          "in": 0,
+          "out": 90,
+          "fill": "parent",
+          "gradient": {
+            "gradient_type": "radial",
+            "center": [0.5, 0.5],
+            "radius": 0.7,
+            "colors": [
+              { "offset": 0.0, "color": "#1a1a3e" },
+              { "offset": 0.5, "color": "#0f0f2a" },
+              { "offset": 1.0, "color": "#0a0a14" }
+            ]
+          },
+          "transform": { "position": [540, 540] }
+        },
+        {
+          "id": "outer_glow",
+          "type": "shape",
+          "in": 0,
+          "out": 90,
+          "shape": {
+            "shape_type": "ellipse",
+            "width": 500,
+            "height": 500,
+            "fill": "#f5c33d"
+          },
+          "effects": [
+            { "type": "gaussian_blur", "radius": 80.0 }
+          ],
+          "blend_mode": "add",
+          "transform": {
+            "position": [540, 540],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 15, "v": 0.3, "easing": "ease_in_out" },
+              { "t": 45, "v": 0.15, "easing": "ease_in_out" },
+              { "t": 60, "v": 0.35, "easing": "ease_in_out" },
+              { "t": 90, "v": 0.0 }
+            ],
+            "scale": [
+              { "t": 0, "v": [0.3, 0.3], "easing": "ease_out" },
+              { "t": 20, "v": [1.0, 1.0], "easing": "ease_in_out" },
+              { "t": 45, "v": [0.8, 0.8], "easing": "ease_in_out" },
+              { "t": 70, "v": [1.1, 1.1], "easing": "ease_in_out" },
+              { "t": 90, "v": [0.3, 0.3] }
+            ]
+          }
+        },
+        {
+          "id": "inner_glow",
+          "type": "shape",
+          "in": 0,
+          "out": 90,
+          "shape": {
+            "shape_type": "ellipse",
+            "width": 250,
+            "height": 250,
+            "fill": "#fff86b"
+          },
+          "effects": [
+            { "type": "gaussian_blur", "radius": 40.0 }
+          ],
+          "blend_mode": "add",
+          "transform": {
+            "position": [540, 540],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 10, "v": 0.5, "easing": "ease_in_out" },
+              { "t": 30, "v": 0.2, "easing": "ease_in_out" },
+              { "t": 50, "v": 0.6, "easing": "ease_in_out" },
+              { "t": 75, "v": 0.3, "easing": "ease_in" },
+              { "t": 90, "v": 0.0 }
+            ],
+            "scale": [
+              { "t": 0, "v": [0.5, 0.5], "easing": "ease_out" },
+              { "t": 15, "v": [1.2, 1.2], "easing": "ease_in_out" },
+              { "t": 45, "v": [0.9, 0.9], "easing": "ease_in_out" },
+              { "t": 75, "v": [1.3, 1.3], "easing": "ease_in" },
+              { "t": 90, "v": [0.5, 0.5] }
+            ]
+          }
+        },
+        {
+          "id": "star_outer",
+          "type": "shape",
+          "in": 0,
+          "out": 90,
+          "shape": {
+            "shape_type": "polygon",
+            "points": [
+              [0, -140], [32, -45], [114, -45], [52, 8],
+              [70, 95], [0, 45], [-70, 95], [-52, 8],
+              [-114, -45], [-32, -45]
+            ],
+            "fill": "#f5c33d",
+            "stroke": { "color": "#fff86b", "width": 2.0 }
+          },
+          "effects": [
+            { "type": "drop_shadow", "color": "#f5c33d", "offset_x": 0.0, "offset_y": 0.0, "blur": 20.0, "opacity": 0.8 }
+          ],
+          "transform": {
+            "position": [540, 540],
+            "rotation": [
+              { "t": 0, "v": -15 },
+              { "t": 90, "v": 375 }
+            ],
+            "scale": [
+              { "t": 0, "v": [0.0, 0.0], "easing": { "type": "spring", "stiffness": 120, "damping": 14, "mass": 1.0 } },
+              { "t": 25, "v": [1.3, 1.3], "easing": "ease_in_out" },
+              { "t": 45, "v": [1.0, 1.0], "easing": "ease_in_out" },
+              { "t": 60, "v": [1.15, 1.15], "easing": "ease_in_out" },
+              { "t": 75, "v": [0.95, 0.95], "easing": "ease_in" },
+              { "t": 90, "v": [0.0, 0.0] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 8, "v": 1.0 },
+              { "t": 78, "v": 1.0, "easing": "ease_in" },
+              { "t": 90, "v": 0.0 }
+            ]
+          }
+        },
+        {
+          "id": "star_inner",
+          "type": "shape",
+          "in": 0,
+          "out": 90,
+          "shape": {
+            "shape_type": "polygon",
+            "points": [
+              [0, -110], [25, -35], [90, -35], [41, 7],
+              [55, 75], [0, 36], [-55, 75], [-41, 7],
+              [-90, -35], [-25, -35]
+            ],
+            "fill": "#fff86b"
+          },
+          "effects": [
+            { "type": "glow", "color": "#fff86b", "radius": 10.0, "intensity": 0.6 }
+          ],
+          "parent": "star_outer",
+          "transform": {
+            "position": [540, 540],
+            "rotation": [
+              { "t": 0, "v": -15 },
+              { "t": 90, "v": 375 }
+            ],
+            "scale": [
+              { "t": 0, "v": [0.0, 0.0], "easing": { "type": "spring", "stiffness": 120, "damping": 14, "mass": 1.0 } },
+              { "t": 25, "v": [1.3, 1.3], "easing": "ease_in_out" },
+              { "t": 45, "v": [1.0, 1.0], "easing": "ease_in_out" },
+              { "t": 60, "v": [1.15, 1.15], "easing": "ease_in_out" },
+              { "t": 75, "v": [0.95, 0.95], "easing": "ease_in" },
+              { "t": 90, "v": [0.0, 0.0] }
+            ],
+            "opacity": [
+              { "t": 0, "v": 0.0, "easing": "ease_out" },
+              { "t": 8, "v": 0.9 },
+              { "t": 78, "v": 0.9, "easing": "ease_in" },
+              { "t": 90, "v": 0.0 }
+            ]
+          }
+        },
+        {
+          "id": "sparkle_1",
+          "type": "shape",
+          "in": 5,
+          "out": 85,
+          "shape": { "shape_type": "ellipse", "width": 6, "height": 6, "fill": "#ffffff" },
+          "blend_mode": "add",
+          "effects": [{ "type": "glow", "color": "#fff86b", "radius": 6.0, "intensity": 1.0 }],
+          "transform": {
+            "position": [
+              { "t": 5, "v": [620, 440], "easing": "ease_in_out" },
+              { "t": 85, "v": [460, 640] }
+            ],
+            "opacity": [
+              { "t": 5, "v": 0.0 }, { "t": 12, "v": 1.0, "easing": "ease_in" },
+              { "t": 25, "v": 0.0 }, { "t": 35, "v": 1.0, "easing": "ease_in" },
+              { "t": 50, "v": 0.0 }, { "t": 60, "v": 1.0, "easing": "ease_in" },
+              { "t": 75, "v": 0.0 }, { "t": 85, "v": 0.0 }
+            ]
+          }
+        },
+        {
+          "id": "sparkle_2",
+          "type": "shape",
+          "in": 10,
+          "out": 80,
+          "shape": { "shape_type": "ellipse", "width": 5, "height": 5, "fill": "#ffffff" },
+          "blend_mode": "add",
+          "effects": [{ "type": "glow", "color": "#ffffff", "radius": 5.0, "intensity": 1.0 }],
+          "transform": {
+            "position": [
+              { "t": 10, "v": [460, 440], "easing": "ease_in_out" },
+              { "t": 80, "v": [620, 640] }
+            ],
+            "opacity": [
+              { "t": 10, "v": 0.0 }, { "t": 20, "v": 1.0, "easing": "ease_in" },
+              { "t": 35, "v": 0.0 }, { "t": 45, "v": 1.0, "easing": "ease_in" },
+              { "t": 60, "v": 0.0 }, { "t": 70, "v": 1.0, "easing": "ease_in" },
+              { "t": 80, "v": 0.0 }
+            ]
+          }
+        },
+        {
+          "id": "sparkle_3",
+          "type": "shape",
+          "in": 3,
+          "out": 87,
+          "shape": { "shape_type": "ellipse", "width": 4, "height": 4, "fill": "#f5c33d" },
+          "blend_mode": "add",
+          "effects": [{ "type": "glow", "color": "#f5c33d", "radius": 4.0, "intensity": 0.8 }],
+          "transform": {
+            "position": [
+              { "t": 3, "v": [540, 400], "easing": "ease_in_out" },
+              { "t": 87, "v": [540, 680] }
+            ],
+            "opacity": [
+              { "t": 3, "v": 0.0 }, { "t": 15, "v": 1.0 },
+              { "t": 30, "v": 0.0 }, { "t": 42, "v": 1.0 },
+              { "t": 55, "v": 0.0 }, { "t": 67, "v": 1.0 },
+              { "t": 80, "v": 0.0 }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "assets": { "fonts": [] }
+}

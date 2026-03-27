@@ -39,79 +39,26 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
-onMounted(() => {
-  // Auto-load a starter composition so the editor is never empty
-  store.fromJson(JSON.stringify({
-    version: '1.0',
-    meta: {
-      name: 'My Composition',
-      width: 1920,
-      height: 1080,
-      fps: 30,
-      duration: 90,
-      root: 'main',
-      background: '#0a0a1a',
-    },
-    compositions: {
-      main: {
-        layers: [
-          {
-            id: 'background',
-            type: 'gradient',
-            in: 0,
-            out: 90,
-            fill: 'parent',
-            gradient: {
-              gradient_type: 'radial',
-              center: [0.5, 0.4],
-              radius: 0.8,
-              colors: [
-                { offset: 0.0, color: '#1a1a3e' },
-                { offset: 1.0, color: '#0a0a1a' },
-              ],
-            },
-            transform: { position: [960, 540] },
-          },
-          {
-            id: 'title',
-            type: 'text',
-            in: 0,
-            out: 90,
-            text: 'Hello, Mercury Motion',
-            font: { family: 'Inter', size: 64, weight: 700, color: '#f5f0e8' },
-            align: 'center',
-            effects: [
-              { type: 'drop_shadow', color: '#c1121f', offset_x: 0, offset_y: 0, blur: 15, opacity: 0.5 },
-            ],
-            transform: {
-              position: [960, 540],
-              opacity: [
-                { t: 0, v: 0.0, easing: 'ease_out' },
-                { t: 15, v: 1.0 },
-              ],
-            },
-          },
-          {
-            id: 'subtitle',
-            type: 'text',
-            in: 10,
-            out: 90,
-            text: 'Start building — add layers, animate, export',
-            font: { family: 'Inter', size: 24, weight: 400, color: '#669BBC' },
-            align: 'center',
-            transform: {
-              position: [960, 620],
-              opacity: [
-                { t: 10, v: 0.0, easing: 'ease_out' },
-                { t: 25, v: 1.0 },
-              ],
-            },
-          },
-        ],
-      },
-    },
-    assets: { fonts: [] },
-  }))
+onMounted(async () => {
+  // Auto-load the golden star demo scene
+  try {
+    const resp = await fetch('/golden_star.mmot.json')
+    if (resp.ok) {
+      const json = await resp.text()
+      store.fromJson(json)
+    }
+  } catch {
+    // Fallback: load a simple starter scene
+    store.fromJson(JSON.stringify({
+      version: '1.0',
+      meta: { name: 'My Composition', width: 1920, height: 1080, fps: 30, duration: 90, root: 'main', background: '#0a0a1a' },
+      compositions: { main: { layers: [
+        { id: 'bg', type: 'gradient', in: 0, out: 90, fill: 'parent', gradient: { gradient_type: 'radial', center: [0.5, 0.4], radius: 0.8, colors: [{ offset: 0, color: '#1a1a3e' }, { offset: 1, color: '#0a0a1a' }] }, transform: { position: [960, 540] } },
+        { id: 'title', type: 'text', in: 0, out: 90, text: 'Hello, Mercury Motion', font: { family: 'Inter', size: 64, weight: 700, color: '#f5f0e8' }, align: 'center', transform: { position: [960, 540], opacity: [{ t: 0, v: 0.0, easing: 'ease_out' }, { t: 15, v: 1.0 }] } },
+      ] } },
+      assets: { fonts: [] },
+    }))
+  }
   store.setFrame(0)
   window.addEventListener('keydown', handleKeydown)
 })
