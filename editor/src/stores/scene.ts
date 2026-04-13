@@ -119,11 +119,15 @@ export const useSceneStore = defineStore('scene', () => {
 
   // --- Preview rendering ---
 
+  let previewRequestId = 0
+
   async function requestPreview() {
+    const requestId = ++previewRequestId
     try {
       const json = toJson()
       console.log('[mmot] requesting preview, frame:', currentFrame.value, 'layers:', layers.value.length)
       const dataUrl = await renderFrame(json, currentFrame.value)
+      if (requestId !== previewRequestId) return
       if (dataUrl) {
         previewImage.value = dataUrl
         dirty.value = false

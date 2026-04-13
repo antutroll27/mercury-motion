@@ -655,10 +655,15 @@ fn resolve_parent_chain(
         None => transform.clone(),
         Some(pid) => {
             let parent_t = resolve_parent_chain(pid, transforms, depth + 1);
+            let scaled_x = transform.position.x * parent_t.scale.x;
+            let scaled_y = transform.position.y * parent_t.scale.y;
+            let radians = parent_t.rotation.to_radians();
+            let cos_theta = radians.cos();
+            let sin_theta = radians.sin();
             ResolvedTransform {
                 position: Vec2 {
-                    x: transform.position.x + parent_t.position.x,
-                    y: transform.position.y + parent_t.position.y,
+                    x: parent_t.position.x + scaled_x * cos_theta - scaled_y * sin_theta,
+                    y: parent_t.position.y + scaled_x * sin_theta + scaled_y * cos_theta,
                 },
                 scale: Vec2 {
                     x: transform.scale.x * parent_t.scale.x,
@@ -852,6 +857,21 @@ fn evaluate_composition(
             None => (0.0, 1.0),
         };
 
+        let local_source_frame = match &layer.time_remap {
+            Some(tr) => {
+                let duration = (layer.out_point - layer.in_point) as f64;
+                let local_frame = (frame - *eff_in) as f64;
+                let remapped = local_frame * tr.speed + tr.offset;
+                let remapped = if tr.reverse {
+                    duration - remapped
+                } else {
+                    remapped
+                };
+                remapped.clamp(0.0, duration - 1.0).max(0.0) as u64
+            }
+            None => frame.saturating_sub(*eff_in),
+        };
+
         let content = match &layer.content {
             LayerContent::Solid { color } => ResolvedContent::Solid {
                 color: color.clone(),
@@ -929,10 +949,13 @@ fn evaluate_composition(
                 height: scene.meta.height,
             },
             LayerContent::Composition { id } => {
-                // Recursively render the referenced composition
-                let sub_layers = evaluate_composition(scene, id, frame, depth + 1, font_cache)?;
-                resolved_layers.extend(sub_layers);
-                continue;
+                let sub_layers =
+                    evaluate_composition(scene, id, local_source_frame, depth + 1, font_cache)?;
+                ResolvedContent::Composition {
+                    layers: sub_layers,
+                    width: scene.meta.width,
+                    height: scene.meta.height,
+                }
             }
             LayerContent::Image { src } => {
                 // Load image from disk
@@ -1255,11 +1278,12 @@ mod tests {
         let scene = parse(json).unwrap();
         let no_fonts = HashMap::new();
         let frame_scene = evaluate_scene(&scene, 0, &no_fonts).unwrap();
-        // The precomp should have resolved the sub composition's solid layer
+        // The precomp should remain a grouped composition layer so wrapper
+        // transforms/effects can be applied correctly at render time.
         assert_eq!(frame_scene.layers.len(), 1);
         assert!(matches!(
             frame_scene.layers[0].content,
-            ResolvedContent::Solid { .. }
+            ResolvedContent::Composition { .. }
         ));
     }
 
@@ -1625,8 +1649,7 @@ mod tests {
     }
 
     #[test]
-    fn circular_parent_does_not_crash() {
-        // Two layers pointing to each other as parents — should not stack overflow
+    fn circular_parent_is_rejected_by_parser() {
         let json = r##"{
             "version": "1.0",
             "meta": { "name": "T", "width": 64, "height": 64, "fps": 30, "duration": 30, "root": "main", "background": "#000000" },
@@ -1654,11 +1677,8 @@ mod tests {
             },
             "assets": { "fonts": [] }
         }"##;
-        let scene = crate::parser::parse(json).unwrap();
-        let font_cache = std::collections::HashMap::new();
-        // Should not panic or hang — depth guard kicks in
-        let fs = evaluate_scene(&scene, 0, &font_cache);
-        assert!(fs.is_ok());
+        let err = crate::parser::parse(json).unwrap_err();
+        assert!(err.to_string().contains("circular parent reference"));
     }
 
     #[test]

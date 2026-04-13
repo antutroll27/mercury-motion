@@ -19,7 +19,7 @@ pub fn apply_masks(canvas: &Canvas, masks: &[Mask]) {
     }
 }
 
-fn mask_path_to_skia(mask_path: &MaskPath) -> Path {
+pub(crate) fn mask_path_to_skia(mask_path: &MaskPath) -> Path {
     let mut path = Path::new();
     match mask_path {
         MaskPath::Rect {

@@ -94,6 +94,11 @@ pub enum ResolvedContent {
         width: u32,
         height: u32,
     },
+    Composition {
+        layers: Vec<ResolvedLayer>,
+        width: u32,
+        height: u32,
+    },
 }
 
 /// Resolved shape data ready for rendering.
@@ -136,45 +141,12 @@ pub fn render(frame_scene: &FrameScene) -> crate::error::Result<Vec<u8>> {
     let w = frame_scene.width;
     let h = frame_scene.height;
     let mut surface = surface::create_cpu_surface(w, h)?;
-    let bg = parse_color(&frame_scene.background);
-
-    // Clear with background colour
-    surface.canvas().clear(bg);
-
-    // Draw layers in order (first = bottom of visual stack)
-    for layer in &frame_scene.layers {
-        if layer.adjustment {
-            // Adjustment layer: apply its effects to everything drawn so far
-            if let Some(ref effects_list) = layer.effects
-                && !effects_list.is_empty()
-                && let Some(filter) = crate::renderer::effects::build_image_filter(effects_list)
-            {
-                // Snapshot the current composited image, clear, and redraw
-                // with the adjustment effect applied.
-                let snapshot = surface.image_snapshot();
-                surface.canvas().clear(parse_color(&frame_scene.background));
-                let mut adj_paint = skia_safe::Paint::default();
-                adj_paint.set_image_filter(filter);
-                surface
-                    .canvas()
-                    .draw_image(&snapshot, (0, 0), Some(&adj_paint));
-            }
-            continue; // Don't draw the adjustment layer itself
-        }
-        layers::draw_layer(surface.canvas(), layer, w, h);
-    }
+    let clear_color = parse_color(&frame_scene.background);
+    surface.canvas().clear(clear_color);
+    render_layers_to_surface(&mut surface, &frame_scene.layers, w, h, clear_color)?;
 
     // Extract RGBA pixels directly — no PNG roundtrip
-    let row_bytes = (w * 4) as usize;
-    let mut rgba = vec![0u8; (w * h * 4) as usize];
-    let info = skia_safe::ImageInfo::new(
-        (w as i32, h as i32),
-        skia_safe::ColorType::RGBA8888,
-        skia_safe::AlphaType::Premul,
-        None,
-    );
-    surface.read_pixels(&info, &mut rgba, row_bytes, (0, 0));
-    Ok(rgba)
+    Ok(read_surface_rgba(&mut surface, w, h))
 }
 
 #[cfg(feature = "native-renderer")]
@@ -187,6 +159,68 @@ fn parse_color(hex: &str) -> skia_safe::Color {
     let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
     let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
     skia_safe::Color::from_argb(255, r, g, b)
+}
+
+#[cfg(feature = "native-renderer")]
+pub(crate) fn render_layers_to_surface(
+    surface: &mut skia_safe::Surface,
+    layers: &[ResolvedLayer],
+    width: u32,
+    height: u32,
+    clear_color: skia_safe::Color,
+) -> crate::error::Result<()> {
+    for layer in layers {
+        if layer.adjustment {
+            if let Some(ref effects_list) = layer.effects
+                && !effects_list.is_empty()
+                && let Some(filter) = crate::renderer::effects::build_image_filter(effects_list)
+            {
+                let snapshot = surface.image_snapshot();
+                surface.canvas().clear(clear_color);
+                let mut adj_paint = skia_safe::Paint::default();
+                adj_paint.set_image_filter(filter);
+                surface
+                    .canvas()
+                    .draw_image(&snapshot, (0, 0), Some(&adj_paint));
+            }
+            continue;
+        }
+
+        layers::draw_layer(surface.canvas(), layer, width, height)?;
+    }
+
+    Ok(())
+}
+
+#[cfg(feature = "native-renderer")]
+pub(crate) fn render_layers_to_image(
+    layers: &[ResolvedLayer],
+    width: u32,
+    height: u32,
+) -> crate::error::Result<skia_safe::Image> {
+    let mut surface = surface::create_cpu_surface(width, height)?;
+    let clear_color = skia_safe::Color::TRANSPARENT;
+    surface.canvas().clear(clear_color);
+    render_layers_to_surface(&mut surface, layers, width, height, clear_color)?;
+    Ok(surface.image_snapshot())
+}
+
+#[cfg(feature = "native-renderer")]
+pub(crate) fn read_surface_rgba(
+    surface: &mut skia_safe::Surface,
+    width: u32,
+    height: u32,
+) -> Vec<u8> {
+    let row_bytes = (width * 4) as usize;
+    let mut rgba = vec![0u8; (width * height * 4) as usize];
+    let info = skia_safe::ImageInfo::new(
+        (width as i32, height as i32),
+        skia_safe::ColorType::RGBA8888,
+        skia_safe::AlphaType::Premul,
+        None,
+    );
+    surface.read_pixels(&info, &mut rgba, row_bytes, (0, 0));
+    rgba
 }
 
 #[cfg(all(test, feature = "native-renderer"))]
@@ -595,6 +629,158 @@ mod tests {
         // Center pixel (50,50) should be red
         let center = (50 * 100 + 50) * 4;
         assert_eq!(rgba[center], 255, "center should be red (inside mask)");
+    }
+
+    #[test]
+    fn mask_opacity_scales_layer_alpha() {
+        use crate::schema::effects::{Mask, MaskMode, MaskPath};
+        let frame = FrameScene {
+            width: 100,
+            height: 100,
+            background: "#000000".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 50.0, y: 50.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Solid {
+                    color: "#ff0000".into(),
+                },
+                fill_parent: true,
+                blend_mode: None,
+                masks: Some(vec![Mask {
+                    path: MaskPath::Ellipse {
+                        cx: 50.0,
+                        cy: 50.0,
+                        rx: 20.0,
+                        ry: 20.0,
+                    },
+                    mode: MaskMode::Add,
+                    feather: 0.0,
+                    opacity: 0.5,
+                    inverted: false,
+                }]),
+                effects: None,
+                adjustment: false,
+                track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
+            }],
+        };
+
+        let rgba = render(&frame).unwrap();
+        let center = (50 * 100 + 50) * 4;
+        assert!(
+            rgba[center] > 100 && rgba[center] < 200,
+            "mask opacity should attenuate red channel, got {}",
+            rgba[center]
+        );
+    }
+
+    #[test]
+    fn inverted_mask_reveals_outside_region() {
+        use crate::schema::effects::{Mask, MaskMode, MaskPath};
+        let frame = FrameScene {
+            width: 100,
+            height: 100,
+            background: "#000000".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 1.0,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 50.0, y: 50.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Solid {
+                    color: "#ff0000".into(),
+                },
+                fill_parent: true,
+                blend_mode: None,
+                masks: Some(vec![Mask {
+                    path: MaskPath::Ellipse {
+                        cx: 50.0,
+                        cy: 50.0,
+                        rx: 20.0,
+                        ry: 20.0,
+                    },
+                    mode: MaskMode::Add,
+                    feather: 0.0,
+                    opacity: 1.0,
+                    inverted: true,
+                }]),
+                effects: None,
+                adjustment: false,
+                track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
+            }],
+        };
+
+        let rgba = render(&frame).unwrap();
+        let center = (50 * 100 + 50) * 4;
+        assert_eq!(rgba[center], 0, "center should be masked out by inversion");
+        assert_eq!(rgba[0], 255, "corner should remain visible outside the mask");
+    }
+
+    #[test]
+    fn composition_layer_opacity_applies_to_nested_output() {
+        let frame = FrameScene {
+            width: 8,
+            height: 8,
+            background: "#000000".into(),
+            layers: vec![ResolvedLayer {
+                opacity: 0.5,
+                transform: ResolvedTransform {
+                    position: Vec2 { x: 4.0, y: 4.0 },
+                    scale: Vec2 { x: 1.0, y: 1.0 },
+                    rotation: 0.0,
+                    opacity: 1.0,
+                },
+                content: ResolvedContent::Composition {
+                    width: 8,
+                    height: 8,
+                    layers: vec![ResolvedLayer {
+                        opacity: 1.0,
+                        transform: ResolvedTransform {
+                            position: Vec2 { x: 4.0, y: 4.0 },
+                            scale: Vec2 { x: 1.0, y: 1.0 },
+                            rotation: 0.0,
+                            opacity: 1.0,
+                        },
+                        content: ResolvedContent::Solid {
+                            color: "#ffffff".into(),
+                        },
+                        fill_parent: true,
+                        blend_mode: None,
+                        masks: None,
+                        effects: None,
+                        adjustment: false,
+                        track_matte_source: None,
+                        trim_start: 0.0,
+                        trim_end: 1.0,
+                    }],
+                },
+                fill_parent: true,
+                blend_mode: None,
+                masks: None,
+                effects: None,
+                adjustment: false,
+                track_matte_source: None,
+                trim_start: 0.0,
+                trim_end: 1.0,
+            }],
+        };
+
+        let rgba = render(&frame).unwrap();
+        assert!(
+            rgba[0] > 100 && rgba[0] < 200,
+            "composition wrapper opacity should attenuate nested content, got {}",
+            rgba[0]
+        );
     }
 
     #[test]

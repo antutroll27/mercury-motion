@@ -15,6 +15,7 @@ pub fn draw(
     color: &str,
     align: &TextAlign,
     custom_font_data: Option<&[u8]>,
+    base_paint: &Paint,
 ) {
     let font_mgr = FontMgr::new();
     let style = FontStyle::new(
@@ -47,7 +48,7 @@ pub fn draw(
     let font = Font::new(typeface, font_size as f32);
     let (hex_r, hex_g, hex_b) = parse_hex_color(color);
 
-    let mut paint = Paint::default();
+    let mut paint = base_paint.clone();
     paint.set_color(Color::from_rgb(hex_r, hex_g, hex_b));
     paint.set_anti_alias(true);
 

@@ -12,6 +12,7 @@ pub fn validate(scene: &Scene) -> Result<()> {
 
     for (comp_name, comp) in &scene.compositions {
         validate_unique_layer_ids(comp_name, &comp.layers)?;
+        validate_parent_links(comp_name, &comp.layers)?;
         for (i, layer) in comp.layers.iter().enumerate() {
             validate_layer(scene, comp_name, i, layer)?;
         }
@@ -125,6 +126,49 @@ fn validate_unique_layer_ids(comp_name: &str, layers: &[Layer]) -> Result<()> {
             });
         }
     }
+    Ok(())
+}
+
+/// Parent links must resolve within the same composition and must not form cycles.
+fn validate_parent_links(comp_name: &str, layers: &[Layer]) -> Result<()> {
+    let layer_ids: HashSet<&str> = layers.iter().map(|layer| layer.id.as_str()).collect();
+
+    for (i, layer) in layers.iter().enumerate() {
+        if let Some(parent_id) = layer.parent.as_deref()
+            && !layer_ids.contains(parent_id)
+        {
+            return Err(MmotError::Parse {
+                message: format!(
+                    "layer '{}' references missing parent '{}'",
+                    layer.id, parent_id
+                ),
+                pointer: format!("/compositions/{}/layers/{}/parent", comp_name, i),
+            });
+        }
+    }
+
+    for layer in layers {
+        let mut visited = HashSet::new();
+        let mut current = Some(layer.id.as_str());
+
+        while let Some(layer_id) = current {
+            if !visited.insert(layer_id) {
+                return Err(MmotError::Parse {
+                    message: format!(
+                        "circular parent reference detected involving '{}'",
+                        layer.id
+                    ),
+                    pointer: format!("/compositions/{}", comp_name),
+                });
+            }
+
+            current = layers
+                .iter()
+                .find(|candidate| candidate.id == layer_id)
+                .and_then(|candidate| candidate.parent.as_deref());
+        }
+    }
+
     Ok(())
 }
 
@@ -399,5 +443,35 @@ mod tests {
         }"##;
         let err = parse(json).unwrap_err();
         assert!(err.to_string().contains("safe_zone width must be > 0"));
+    }
+
+    #[test]
+    fn rejects_missing_parent_layer() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": {"name":"T","width":640,"height":360,"fps":30,"duration":30,"background":"#000000","root":"main"},
+            "compositions": {"main": {"layers": [
+                {"id":"child","type":"solid","in":0,"out":30,"color":"#ff0000","parent":"missing",
+                 "transform":{"position":[0,0],"scale":[1,1],"opacity":1.0,"rotation":0.0}}
+            ]}}
+        }"##;
+        let err = parse(json).unwrap_err();
+        assert!(err.to_string().contains("missing parent"));
+    }
+
+    #[test]
+    fn rejects_circular_parent_layer() {
+        let json = r##"{
+            "version": "1.0",
+            "meta": {"name":"T","width":640,"height":360,"fps":30,"duration":30,"background":"#000000","root":"main"},
+            "compositions": {"main": {"layers": [
+                {"id":"a","type":"solid","in":0,"out":30,"color":"#ff0000","parent":"b",
+                 "transform":{"position":[0,0],"scale":[1,1],"opacity":1.0,"rotation":0.0}},
+                {"id":"b","type":"solid","in":0,"out":30,"color":"#00ff00","parent":"a",
+                 "transform":{"position":[0,0],"scale":[1,1],"opacity":1.0,"rotation":0.0}}
+            ]}}
+        }"##;
+        let err = parse(json).unwrap_err();
+        assert!(err.to_string().contains("circular parent reference"));
     }
 }
